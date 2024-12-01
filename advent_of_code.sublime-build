@@ -1,0 +1,11 @@
+{
+	"shell_cmd": "/usr/bin/env zsh -l -c \"source ~/.zprofile && make run_day\"",
+	"working_dir": "$folder",
+	"file_regex": "^\\s*(\\S[^:]*)\\((\\d+):(\\d+)\\)",
+	"variants":[
+    	{
+        	"name": "current_file",
+        	"shell_cmd": "CURRENT_FILE=$file SESSION=123 make run_day",
+    	}
+	]
+}
