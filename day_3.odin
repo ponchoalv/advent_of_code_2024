@@ -62,6 +62,11 @@ read_file :: proc(filename: string) -> string {
 	return string(data)
 }
 
+/*
+	- part 1: read only tokens with the format mul(N,M) where N and M are numbers from 1 to 3 digits.
+	- part 2: include conditionals for do() and don't() to know if the mul(N,M) is enable or not
+				by default is enable.
+*/
 parse_input :: proc(input: string, with_conditionals: bool = false) -> [][2]int {
 	matches := [dynamic][2]int{}
 	i := 0
