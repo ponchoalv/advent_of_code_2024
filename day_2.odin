@@ -151,29 +151,36 @@ is_safe_report_second_part :: proc(report: []int, depth:int = 0) -> (result: boo
 			}
 
 			// removing current value and check if it is safe
-			wihtout_current := [dynamic]int{}
-			append(&wihtout_current, ..report[:i])
-			append(&wihtout_current, ..report[i+1:])
-			is_valid_without_current := is_safe_report_second_part(wihtout_current[:], 1)
+			remove_one := [dynamic]int{}
+			append(&remove_one, ..report[:i])
+			append(&remove_one, ..report[i+1:])
+			if is_safe_report_second_part(remove_one[:], 1) {
+				result=true
+				return
+			}
 	
-
 			// removing previous value and check if it is safe
-			wihtout_previous := [dynamic]int{}
-			append(&wihtout_previous, ..report[:i-1])
-			append(&wihtout_previous, ..report[i:])
-			is_valid_without_previous := is_safe_report_second_part(wihtout_previous[:], 1)
-
-			// Edge case when removing the index 1 and 2 failed but if we would remove index 0 would succeed.
-			// For example having [20, 21, 20, 18, 17] it would failed if we only check current and previous
-			is_valid_without_two_previous := false
-			if i > 1 {
-				wihtout_two_previous := [dynamic]int{}
-				append(&wihtout_two_previous, ..report[:i-2])
-				append(&wihtout_two_previous, ..report[i-1:])
-				is_valid_without_two_previous = is_safe_report_second_part(wihtout_two_previous[:], 1)		
+			remove_one = [dynamic]int{}
+			append(&remove_one, ..report[:i-1])
+			append(&remove_one, ..report[i:])
+			if is_safe_report_second_part(remove_one[:], 1) {
+				result = true
+				return
 			}
 			
-			result = is_valid_without_current || is_valid_without_previous || is_valid_without_two_previous
+			// Edge case when removing the index 1 and 2 failed but if we would remove index 0 would succeed.
+			// For example having [20, 21, 20, 18, 17] it would failed if we only check current and previous
+			if i > 1 {
+				remove_one = [dynamic]int{}
+				append(&remove_one, ..report[:i-2])
+				append(&remove_one, ..report[i-1:])
+				if is_safe_report_second_part(remove_one[:], 1) {
+					result = true
+					return
+				}
+			}
+
+			result = false
 			return
 		}
 
