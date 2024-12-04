@@ -9,3 +9,6 @@ endif
 
 run_day: download_input ${CURRENT_FILE}
 	odin run ${CURRENT_FILE} -file
+
+run_day_no_bounds_check: ${CURRENT_FILE}
+	odin run ${CURRENT_FILE} -file --no-bounds-check
