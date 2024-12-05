@@ -10,6 +10,7 @@ EXAMPLE_PART_2 :: 9
 
 RESULT_PART_1 :: 2483
 RESULT_PART_2 :: 1925
+Direction :: [2]int
 
 main :: proc() {
 	fmt.println("Running day_4...")
@@ -22,7 +23,8 @@ main :: proc() {
 part_1 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 
-	result = count_words_with_xmas(read_file(filename))
+	directions := []Direction { { 0,  1},{ 0, -1},{ 1,  0},{-1,  0},{ 1,  1},{-1,  1},{ 1, -1},{-1, -1} }
+	result = count_match_word(read_file(filename), "XMAS", directions)
 	
 	elapsed := time.since(start)
 
@@ -33,8 +35,9 @@ part_1 :: proc(filename: string) -> (result: u64) {
 part_2 :: proc(filename: string)  -> (result: u64) {
 	start := time.now()
 
-	result = count_words_with_x_mas(read_file(filename))
-	
+	directions := []Direction { {1, 1}, {-1, 1}, {1, -1}, {-1, -1} }
+	result = count_match_word(read_file(filename), "MAS", directions, true)
+
 	elapsed := time.since(start)
 
 	fmt.printf("time elapsed: %fms\n",time.duration_milliseconds(elapsed))
@@ -249,6 +252,35 @@ count_words_with_x_mas :: proc(input: string) -> u64 {
 }
 
 /*
+	walk through a source of type []string in the direction and as long as length (int) specified it.
+	Record what was read as a result, return false when read is out of bounds
+		Directions:
+			- ( 0,  1)	-> forward
+			- ( 0, -1)	-> backward
+			- ( 1,  0)	-> down
+			- (-1,  0)	-> up
+			- ( 1,  1)	-> down forward diagonal
+			- (-1,  1)	-> up forward diagonal
+			- ( 1, -1)	-> down backward diagonal
+			- (-1, -1)	-> up backward diagonal
+*/
+walk_and_read_in_direction :: proc(src: []string, starting_point: [2]int, direction: Direction, steps: int) -> ([]byte, bool)  #no_bounds_check {
+	bytes_read := make([]byte, steps)
+	end_point := starting_point + (direction * (steps - 1))
+
+	if end_point[0] < 0 || end_point[0] >= len(src[0]) || end_point[1] < 0 || end_point[1] >= len(src)-1 {
+		return bytes_read, false
+	}
+	
+	for i in 0..<steps {
+		current_poss := starting_point + (direction * i)
+		bytes_read[i] = src[current_poss.x][current_poss.y]
+	}
+
+	return bytes_read, true
+}
+
+/*
 generic way (could be use with other words and in both parts)
 Part 1 (checking for XMAS and with check_for_x=false):
 	- Need to find XMAS in all possible directions including diagonals
@@ -267,141 +299,37 @@ Part 2 (checking for MAS and with check_for_x=true):
        - down backward diagonal, record A position and if it was twice increase result
        - up backward diagonal, record A position and if it was twice increase result
 */
-count_match_word :: proc(input, match_word: string, check_for_x: bool = false) -> u64 {
+count_match_word :: proc(input, match_word: string, directions: []Direction, check_for_x: bool = false) -> u64  #no_bounds_check {
 	lines := strings.split_lines(input)
 	len_lines := len(lines)
 	len_line := len(lines[0])
 	total_len := len_lines*len_line
-	
 	len_match_word := len(match_word)
-	buffer: []byte = make([]byte, len_match_word)
-	match_word_reverse := strings.reverse(match_word)
-	
-	i := 0
-	line_num := 0
+		
 	result: u64 = 0
-	intersections := make([]int, total_len)
-	x_pos := 0
-	match_forward:= false
+	intersections := map[[2]int]bool{}
 
-	for i < total_len {
-		if input[i] ==  match_word[0] {
-			// forward line
-			if (i % (len_line + 1)) + (len_match_word - 1) < len_line && !check_for_x {
-				if input[i:i+len_match_word] == match_word {
-					result += 1
-					match_forward = true
-				}
+	for y in 0..<len(lines) {
+		for x in 0..<len_line {
+			if lines[y] == "" {
+				continue
 			}
 
-			// backward line
-			if (i % (len_line + 1)) - (len_match_word - 1) >= 0  && !check_for_x {
-				result += 1 if input[i-(len_match_word - 1):i+1] == match_word_reverse else 0
-			}
-
-			// down direction
-			if  line_num + len_match_word < len_lines  && !check_for_x {
-				for j in 0..<len_match_word {
-	 				buffer[j] = input[i + (len_line + 1) * j]
-				}
-
-				result += 1 if transmute(string)buffer[:] == match_word else 0
-			}
-
-			// up direction
-			if  line_num - (len_match_word - 1) >= 0  && !check_for_x {
-				for j in 0..<len_match_word {
-	 				buffer[j] = input[i - (len_line + 1) * j]
-				}
-
-				result += 1 if transmute(string)buffer[:] == match_word else 0
-			}
-
-			// down forward diagonal
-			if  line_num + len_match_word < len_lines && (i % (len_line + 1)) + (len_match_word - 1) < len_line {
-				for j in 0..<len_match_word {
-	 				buffer[j] = input[i + ((len_line + 1) * j) + (1 * j)]
-	 				if check_for_x && j == len_match_word / 2 {
-	 					x_pos = i + ((len_line + 1) * j) + (1 * j)
-	 				}
-				}
-
-				if transmute(string)buffer[:] == match_word {
-					if check_for_x {
-						intersections[x_pos] = intersections[x_pos] + 1
-						result += 1 if intersections[x_pos] == 2 else 0
-					} else {
-						result += 1
+			if lines[y][x] == match_word[0] {
+				for direction in directions {
+					if buffer, ok := walk_and_read_in_direction(lines, {y,x}, direction, len_match_word); ok {
+						if transmute(string)buffer[:] == match_word {
+							if check_for_x {
+								a_pos := [2]int{y,x} + direction
+								result += 1 if intersections[a_pos] else 0
+								intersections[a_pos] = true
+							} else {
+								result += 1
+							}
+						}
 					}
 				}
 			}
-
-			// up forward diagonal
-			if  line_num - (len_match_word - 1) >= 0 && (i % (len_line + 1)) + (len_match_word - 1) < len_line {
-				for j in 0..<len_match_word {
-	 				buffer[j] = input[i - ((len_line + 1) * j) + (1 * j)]
-	 				if check_for_x && j == len_match_word / 2 {
-	 					x_pos = i - ((len_line + 1) * j) + (1 * j)
-	 				}
-				}
-
-				if transmute(string)buffer[:] == match_word {
-					if check_for_x {
-						intersections[x_pos] = intersections[x_pos] + 1
-						result += 1 if intersections[x_pos] == 2 else 0
-					} else {
-						result += 1
-					}
-				}
-			}
-
-			// down backward diagonal
-			if  line_num + len_match_word < len_lines && (i % (len_line + 1)) - (len_match_word - 1) >= 0 {
-				for j in 0..<len_match_word {
-	 				buffer[j] = input[i + ((len_line + 1) * j) - (1 * j)]
-	 				if check_for_x && j == len_match_word / 2 {
-	 					x_pos = i + ((len_line + 1) * j) - (1 * j)
-	 				}
-				}
-
-				if transmute(string)buffer[:] == match_word {
-					if check_for_x {
-						intersections[x_pos] = intersections[x_pos] + 1
-						result += 1 if intersections[x_pos] == 2 else 0
-					} else {
-						result += 1
-					}
-				}
-			}
-
-			// up backward diagonal
-			if  line_num - (len_match_word - 1) >= 0 && (i % (len_line + 1)) - (len_match_word - 1) >= 0 {
-				for j in 0..<len_match_word {
-	 				buffer[j] = input[i - ((len_line + 1) * j) - (1 * j)]
-	 				if check_for_x && j == len_match_word / 2 {
-	 					x_pos = i - ((len_line + 1) * j) - (1 * j)
-	 				}
-				}
-				
-				if transmute(string)buffer[:] == match_word {
-					if check_for_x {
-						intersections[x_pos] = intersections[x_pos] + 1
-						result += 1 if intersections[x_pos] == 2 else 0
-					} else {
-						result += 1
-					}
-				}
-			}
-
-		} else if input[i] == '\n' {
-			line_num += 1
-		}
-
-		if match_forward {
-			i += len_match_word
-			match_forward = false
-		} else {
-			i += 1
 		}
 	}
 
