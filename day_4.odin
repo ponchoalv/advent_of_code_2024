@@ -23,9 +23,11 @@ main :: proc() {
 part_1 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 
-	directions := []Direction { { 0,  1},{ 0, -1},{ 1,  0},{-1,  0},{ 1,  1},{-1,  1},{ 1, -1},{-1, -1} }
-	result = count_match_word(read_file(filename), "XMAS", directions)
+	// directions := []Direction { {0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1} }
+	// result = count_match_word(read_file(filename), "XMAS", directions)
 	
+	result = count_words_with_xmas(read_file(filename))
+
 	elapsed := time.since(start)
 
 	fmt.printf("time elapsed: %fms\n",time.duration_milliseconds(elapsed))
@@ -35,9 +37,10 @@ part_1 :: proc(filename: string) -> (result: u64) {
 part_2 :: proc(filename: string)  -> (result: u64) {
 	start := time.now()
 
-	directions := []Direction { {1, 1}, {-1, 1}, {1, -1}, {-1, -1} }
-	result = count_match_word(read_file(filename), "MAS", directions, true)
+	// directions := []Direction { {1, 1}, {-1, 1}, {1, -1}, {-1, -1} }
+	// result = count_match_word(read_file(filename), "MAS", directions, true)
 
+	result = count_words_with_x_mas(read_file(filename))
 	elapsed := time.since(start)
 
 	fmt.printf("time elapsed: %fms\n",time.duration_milliseconds(elapsed))
@@ -76,7 +79,7 @@ read_file :: proc(filename: string) -> string {
        - down backward diagonal
        - up backward diagonal
 */
-count_words_with_xmas :: proc(input: string) -> u64 {
+count_words_with_xmas :: proc(input: string) -> u64 #no_bounds_check {
 	lines := strings.split_lines(input)
 	len_lines := len(lines)
 	len_line := len(lines[0])
@@ -177,7 +180,7 @@ count_words_with_xmas :: proc(input: string) -> u64 {
        - down backward diagonal, record A position and if it was twice increase result
        - up backward diagonal, record A position and if it was twice increase result
 */
-count_words_with_x_mas :: proc(input: string) -> u64 {
+count_words_with_x_mas :: proc(input: string) -> u64 #no_bounds_check {
 	lines := strings.split_lines(input)
 	len_lines := len(lines)
 	len_line := len(lines[0])
@@ -254,6 +257,7 @@ count_words_with_x_mas :: proc(input: string) -> u64 {
 /*
 	walk through a source of type []string in the direction and as long as length (int) specified it.
 	Record what was read as a result, return false when read is out of bounds
+		starting_point: (y,x)
 		Directions:
 			- ( 0,  1)	-> forward
 			- ( 0, -1)	-> backward
@@ -274,7 +278,7 @@ walk_and_read_in_direction :: proc(src: []string, starting_point: [2]int, direct
 	
 	for i in 0..<steps {
 		current_poss := starting_point + (direction * i)
-		bytes_read[i] = src[current_poss.x][current_poss.y]
+		bytes_read[i] = src[current_poss[0]][current_poss[1]]
 	}
 
 	return bytes_read, true
@@ -299,30 +303,33 @@ Part 2 (checking for MAS and with check_for_x=true):
        - down backward diagonal, record A position and if it was twice increase result
        - up backward diagonal, record A position and if it was twice increase result
 */
-count_match_word :: proc(input, match_word: string, directions: []Direction, check_for_x: bool = false) -> u64  #no_bounds_check {
+count_match_word :: proc(input, match_word: string, directions: []Direction, check_for_x: bool = false) -> u64 #no_bounds_check {
 	lines := strings.split_lines(input)
 	len_lines := len(lines)
 	len_line := len(lines[0])
 	total_len := len_lines*len_line
 	len_match_word := len(match_word)
-		
+	current_poss: [2]int
+	middle_poss: [2]int
+
 	result: u64 = 0
 	intersections := map[[2]int]bool{}
-
+	
 	for y in 0..<len(lines) {
 		for x in 0..<len_line {
 			if lines[y] == "" {
 				continue
 			}
 
+			current_poss = {y,x}
 			if lines[y][x] == match_word[0] {
 				for direction in directions {
-					if buffer, ok := walk_and_read_in_direction(lines, {y,x}, direction, len_match_word); ok {
+					if buffer, ok := walk_and_read_in_direction(lines, current_poss, direction, len_match_word); ok {
 						if transmute(string)buffer[:] == match_word {
 							if check_for_x {
-								a_pos := [2]int{y,x} + direction
-								result += 1 if intersections[a_pos] else 0
-								intersections[a_pos] = true
+								middle_poss = current_poss + (direction * (len_match_word/2))
+								result += 1 if intersections[middle_poss] else 0
+								intersections[middle_poss] = true
 							} else {
 								result += 1
 							}

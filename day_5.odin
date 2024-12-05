@@ -34,8 +34,8 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 	page_number_inputs := parse_input(input)
-	for &page_number_input in page_number_inputs {
-		if is_valid, middle := validate_print_order(&page_number_input); is_valid {
+	for &page_numbers in page_number_inputs {
+		if is_valid, middle := validate_print_order(&page_numbers); is_valid {
 			result += u64(middle)
 		}
 	}
@@ -49,10 +49,10 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 	page_number_inputs := parse_input(input)
-	for &page_number_input in page_number_inputs {
-		if is_valid, middle := validate_print_order(&page_number_input); !is_valid {
-			re_order_pages(&page_number_input)
-			result += u64(page_number_input[len(page_number_input) / 2])
+	for &page_numbers in page_number_inputs {
+		if is_valid, middle := validate_print_order(&page_numbers); !is_valid {
+			re_order_pages(&page_numbers)
+			result += u64(page_numbers[len(page_numbers) / 2])
 		}
 	}
 
@@ -121,10 +121,10 @@ parse_input :: proc(input: string) -> [][]int #no_bounds_check {
 	return page_print_inputs[:]
 }
 
-validate_print_order :: proc(page_print_input: ^[]int) -> (bool, int) #no_bounds_check {
+validate_print_order :: proc(page_numbers: ^[]int) -> (bool, int) #no_bounds_check {
 	is_valid := false
-	outer: for page, i in page_print_input {
-		for child in page_print_input[i + 1:] {
+	outer: for page, i in page_numbers {
+		for child in page_numbers[i + 1:] {
 			is_valid = page_rules[page].childs[child]
 			if !is_valid {
 				break outer
@@ -132,13 +132,13 @@ validate_print_order :: proc(page_print_input: ^[]int) -> (bool, int) #no_bounds
 		}
 	}
 
-	return is_valid, page_print_input[len(page_print_input) / 2]
+	return is_valid, page_numbers[len(page_numbers) / 2]
 }
 
-re_order_pages :: proc(page_print_input: ^[]int) #no_bounds_check {
-	order_pages :: proc(i, j: int) -> bool {
+re_order_pages :: proc(page_numbers: ^[]int) #no_bounds_check {
+	page_greater_than :: proc(i, j: int) -> bool {
 		return page_rules[i].childs[j]
 	}
 
-	slice.sort_by(page_print_input[:], order_pages)
+	slice.sort_by(page_numbers[:], page_greater_than)
 }
