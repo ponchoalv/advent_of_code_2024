@@ -22,6 +22,11 @@ DIRECTION_UP_FORWARD    :: Direction{-1, 1}
 DIRECTION_DOWN_BACKWARD :: Direction{1, -1}
 DIRECTION_UP_BACKWARD   :: Direction{-1, -1}
 
+VisitedStep ::  struct {
+	dir: Direction,
+	coord: [2]int,
+}
+
 // we know is at max 130x130
 WalkedPathCount :: [130][130]int
 
@@ -220,8 +225,8 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 
 	walked_steps := WalkedPathCount{}
 	walked_steps_loop := WalkedPathCount{}
-	// this will complain because is too big to store in the stack, but it turns out to be fine
-	turned_steps_loop := [130][130][2]Direction{}
+	turned_steps_loop := map[VisitedStep]bool{}
+	visitedStep: VisitedStep
 	
 	guard_finished_walk := false
 	result: u64
@@ -258,8 +263,8 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 				direction = DIRECTION_UP
 				guard_finished_walk = false
 				loop_found = false
-				// this will complain because is too big to store in the stack, but it turns out to be fine
-				turned_steps_loop = [130][130][2]Direction{}
+				
+				clear(&turned_steps_loop)
 
 				// store current line
 				previous_line := strings.clone(lines[coord[0]])
@@ -277,21 +282,15 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 						// loop would be if we are in a tile facing the same direction as before
 						direction = turn_right(direction)
 						// get the previous two directions for the current possition
-						v := turned_steps_loop[current_poss[0]][current_poss[1]]
+						visitedStep = VisitedStep{dir = direction, coord = current_poss}
 						// if any of those two directions was recorded we are in a loop
-						if  v[0]==direction || v[1]==direction {
+						if visitedStep in turned_steps_loop {
 							result += 1
 							loop_found = true
-						}
-
-						// record the directions, if is zero means we should record in position 0 otherwise in position 1 (we might risk to not record an intermediate 3rd one, but it looks like just the last two directions was enough)
-						if v[0] == {0,0} {
-							v[0] = direction
 						} else {
-							v[1] = direction
+							turned_steps_loop[visitedStep] = true
 						}
 						
-						turned_steps_loop[current_poss[0]][current_poss[1]] = v
 					}
 				}
 
