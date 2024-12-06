@@ -17,10 +17,6 @@ DIRECTION_FORWARD       :: Direction{0, 1}
 DIRECTION_BACKWARD      :: Direction{0, -1}
 DIRECTION_DOWN          :: Direction{1, 0}
 DIRECTION_UP            :: Direction{-1, 0}
-DIRECTION_DOWN_FORWARD  :: Direction{1, 1}
-DIRECTION_UP_FORWARD    :: Direction{-1, 1}
-DIRECTION_DOWN_BACKWARD :: Direction{1, -1}
-DIRECTION_UP_BACKWARD   :: Direction{-1, -1}
 
 VisitedStep ::  struct {
 	dir: Direction,
@@ -95,7 +91,7 @@ read_file :: proc(filename: string) -> string {
 			- ( 1, -1)	-> down backward diagonal
 			- (-1, -1)	-> up backward diagonal
 */
-walk_until_in_direction :: proc(
+walk_in_direction_until :: proc(
 	src: []string,
 	starting_point: [2]int,
 	direction: Direction,
@@ -131,11 +127,17 @@ walk_until_in_direction :: proc(
 
 /*
 	Rotate a direction 90 degrees:
-		(0, 1) (forward) -> (1, 0) -> down
-		(1, 0) (down) -> (0, -1) -> backward
-		(0, -1) (backward) -> (-1, 0) -> up
-		(-1, 0) (up) -> (0, -1) -> forward
+		 dy,dx               	dx,-dy
+		(0, 1) 	(forward) 	-> (1, 0) 	-> down
+		(1, 0) 	(down) 		-> (0, -1) 	-> backward
+		(0, -1) (backward) 	-> (-1, 0) 	-> up
+		(-1, 0) (up) 		-> (0, 1) 	-> forward
 */
+// turn_right :: proc(direction: ^Direction) {
+// 	direction[0], direction[1] = direction[1], -direction[0]
+// }
+
+// I like it more verbose
 turn_right :: proc(direction: Direction) -> Direction {
 	switch direction {
 		case DIRECTION_FORWARD:
@@ -189,7 +191,7 @@ count_guard_steps :: proc(input: string) -> u64 #no_bounds_check {
 	}
 
 	for !guard_finished_walk {
-		current_poss, guard_finished_walk = walk_until_in_direction(lines, current_poss, direction, &walked_steps,'#')
+		current_poss, guard_finished_walk = walk_in_direction_until(lines, current_poss, direction, &walked_steps,'#')
 		if !guard_finished_walk {
 			direction = turn_right(direction)
 		}
@@ -215,7 +217,7 @@ count_guard_steps :: proc(input: string) -> u64 #no_bounds_check {
 	- we assume that the starting direction is UP
 	- record the path the guard follows
 	- add obstructions to that path and check if guard is looping
-	- we consider we are looping if we have been in the same position at the same direction before
+	- we consider we are looping if we have been in the same position at the same direction before when turning direction
 */
 count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	lines := strings.split_lines(input)
@@ -229,9 +231,9 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	visitedStep: VisitedStep
 	
 	guard_finished_walk := false
-	result: u64
 	loop_found := false
 	line: []u8
+	result: u64
 
 	if !starting_point_ok {
 		fmt.panicf("starting point not found with token: '%v'", '^')
@@ -239,7 +241,7 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 
 	// record guard path
 	for !guard_finished_walk {
-		current_poss, guard_finished_walk = walk_until_in_direction(lines, current_poss, direction, &walked_steps,'#')
+		current_poss, guard_finished_walk = walk_in_direction_until(lines, current_poss, direction, &walked_steps,'#')
 		if !guard_finished_walk {
 			direction = turn_right(direction)
 		}
@@ -266,8 +268,7 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 				
 				clear(&turned_steps_loop)
 
-				// store current line
-				previous_line := strings.clone(lines[coord[0]])
+				// retrieve current line
 				line = transmute([]u8)lines[coord[0]]
 				
 				// add the obstacle
@@ -275,7 +276,7 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 				lines[coord[0]] = transmute(string)line
 
 				for !loop_found && !guard_finished_walk {
-					current_poss, guard_finished_walk = walk_until_in_direction(lines, current_poss, direction, &walked_steps_loop,'#')
+					current_poss, guard_finished_walk = walk_in_direction_until(lines, current_poss, direction, &walked_steps_loop,'#')
 					
 					// everytime we turn (we might be in a loop) check if we are in a loop
 					if !guard_finished_walk {
@@ -295,7 +296,8 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 				}
 
 				// clear the obstable for the next run
-				lines[coord[0]] = previous_line
+				line[coord[1]] = '.'
+				lines[coord[0]] = transmute(string)line
 			} else {
 				// it wasn't walked
 				continue
