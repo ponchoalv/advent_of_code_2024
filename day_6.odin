@@ -22,6 +22,8 @@ DIRECTION_UP_FORWARD    :: Direction{-1, 1}
 DIRECTION_DOWN_BACKWARD :: Direction{1, -1}
 DIRECTION_UP_BACKWARD   :: Direction{-1, -1}
 
+// we know is at max 130x130
+WalkedPathCount :: [130][130]int
 
 main :: proc() {
 	fmt.println("Running day_6...")
@@ -92,16 +94,18 @@ walk_until_in_direction :: proc(
 	src: []string,
 	starting_point: [2]int,
 	direction: Direction,
-	walked_steps: ^map[[2]int]bool,
+	walked_steps: ^WalkedPathCount,
 	token: byte,
 ) -> (
 	[2]int,
 	bool,
 ) #no_bounds_check {
-	current_poss:= starting_point
+	current_poss := starting_point
+	previous_poss := starting_point
 
 	for src[current_poss[0]][current_poss[1]] != token {
 		// fmt.printf("%r", src[current_poss[0]][current_poss[1]])
+		previous_poss = current_poss
 		current_poss += direction
 		// fmt.println(current_poss)
 		if current_poss[0] < 0 ||
@@ -109,13 +113,12 @@ walk_until_in_direction :: proc(
 	   		current_poss[1] < 0 ||
 	   		current_poss[1] >= len(src) - 1 {
 	   		
-	   		walked_steps[current_poss-direction]=true
+	   		walked_steps[previous_poss[0]][previous_poss[1]] += 1
 
 			return (current_poss-direction), true
 		}
 
-		walked_steps[current_poss-direction]=true
-
+		walked_steps[previous_poss[0]][previous_poss[1]] += 1
 	}
 
 	return (current_poss - direction), false
@@ -172,8 +175,9 @@ count_guard_steps :: proc(input: string) -> u64 #no_bounds_check {
 	lines := strings.split_lines(input)
 	current_poss, starting_point_ok := find_starting_point(lines, '^')
 	direction := DIRECTION_UP
-	walked_steps := map[[2]int]bool{}
+	walked_steps := WalkedPathCount{}
 	guard_finished_walk := false
+	result:u64
 
 	if !starting_point_ok {
 		fmt.panicf("starting point not found with token: '%v'", '^')
@@ -186,9 +190,17 @@ count_guard_steps :: proc(input: string) -> u64 #no_bounds_check {
 		}
 	}
 
-	// fmt.println(walked_steps)
 
-	return u64(len(walked_steps))
+	for ints, y in walked_steps {
+		for i, x in ints {
+			// this are walked possitions 
+			if i > 0 {
+				result += 1
+			}
+		}
+	}
+
+	return result
 }
 
 /*
@@ -198,6 +210,7 @@ count_guard_steps :: proc(input: string) -> u64 #no_bounds_check {
 	- we assume that the starting direction is UP
 	- record the path the guard follows
 	- add obstructions to that path and check if guard is looping
+	- we consider we are looping if we have been in the same position at the same direction before
 */
 count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	lines := strings.split_lines(input)
@@ -205,9 +218,10 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	current_poss := starting_poss
 	direction := DIRECTION_UP
 
-	walked_steps := map[[2]int]bool{}
-	walked_steps_loop := map[[2]int]bool{}
-	turned_steps_loop := map[[2]int][2]Direction{}
+	walked_steps := WalkedPathCount{}
+	walked_steps_loop := WalkedPathCount{}
+	// this will complain because is too big to store in the stack, but it turns out to be fine
+	turned_steps_loop := [130][130][2]Direction{}
 	
 	guard_finished_walk := false
 	result: u64
@@ -227,45 +241,68 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	}
 
 	// add obstructions in the walked steps
-	for coord in walked_steps {
-		// cannot add obstacle in starting point
-		if coord == starting_poss {
-			continue
-		}
+	for v, y in walked_steps {
+		for i, x in v {
+			// was walked by guards
+			if i > 0 {
+				coord := [2]int{y,x}
 
-		clear(&walked_steps_loop)
-		clear(&turned_steps_loop)
-
-		current_poss = starting_poss
-		direction = DIRECTION_UP
-		previous_line := strings.clone(lines[coord[0]])
-		line = transmute([]u8)lines[coord[0]]
-		line[coord[1]] = '#'
-		lines[coord[0]] = transmute(string)line
-		guard_finished_walk = false
-		loop_found = false
-
-		for !loop_found && !guard_finished_walk {
-			current_poss, guard_finished_walk = walk_until_in_direction(lines, current_poss, direction, &walked_steps_loop,'#')
-			if !guard_finished_walk {
-				// loop would be if we are in a tile facing the same direction as before
-				direction = turn_right(direction)
-				if v, ok := turned_steps_loop[current_poss]; ok && (v[0]==direction || v[1]==direction) {
-					result += 1
-					loop_found = true
-				}
-				if v, ok := turned_steps_loop[current_poss]; ok {
-					v[1] = direction
-					turned_steps_loop[current_poss]=v
-				} else {
-					turned_steps_loop[current_poss] = [2]Direction{direction, direction}
+				// ignore starting poss
+				if coord == starting_poss {
+					continue
 				}
 				
+				// clear the previous run
+				walked_steps_loop = WalkedPathCount{}
+				current_poss = starting_poss
+				direction = DIRECTION_UP
+				guard_finished_walk = false
+				loop_found = false
+				// this will complain because is too big to store in the stack, but it turns out to be fine
+				turned_steps_loop = [130][130][2]Direction{}
+
+				// store current line
+				previous_line := strings.clone(lines[coord[0]])
+				line = transmute([]u8)lines[coord[0]]
+				
+				// add the obstacle
+				line[coord[1]] = '#'
+				lines[coord[0]] = transmute(string)line
+
+				for !loop_found && !guard_finished_walk {
+					current_poss, guard_finished_walk = walk_until_in_direction(lines, current_poss, direction, &walked_steps_loop,'#')
+					
+					// everytime we turn (we might be in a loop) check if we are in a loop
+					if !guard_finished_walk {
+						// loop would be if we are in a tile facing the same direction as before
+						direction = turn_right(direction)
+						// get the previous two directions for the current possition
+						v := turned_steps_loop[current_poss[0]][current_poss[1]]
+						// if any of those two directions was recorded we are in a loop
+						if  v[0]==direction || v[1]==direction {
+							result += 1
+							loop_found = true
+						}
+
+						// record the directions, if is zero means we should record in position 0 otherwise in position 1 (we might risk to not record an intermediate 3rd one, but it looks like just the last two directions was enough)
+						if v[0] == {0,0} {
+							v[0] = direction
+						} else {
+							v[1] = direction
+						}
+						
+						turned_steps_loop[current_poss[0]][current_poss[1]] = v
+					}
+				}
+
+				// clear the obstable for the next run
+				lines[coord[0]] = previous_line
+			} else {
+				// it wasn't walked
+				continue
 			}
 		}
-
-		lines[coord[0]] = previous_line
 	}
-
+	
 	return result
 }
