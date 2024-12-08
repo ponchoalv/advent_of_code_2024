@@ -188,6 +188,9 @@ tune_number_calibration :: proc(number_to_calibrate: ^NumberToCalibrate, with_co
 		current_sum: u64 = 0
 		current_sum += number_to_calibrate.members[0]
 		for operation, i in comb_operations {
+			if current_sum > number_to_calibrate.value {
+				break
+			}
 			switch operation {
 			case .PLUS:
 				current_sum += number_to_calibrate.members[i + 1]
@@ -195,7 +198,7 @@ tune_number_calibration :: proc(number_to_calibrate: ^NumberToCalibrate, with_co
 				current_sum *= number_to_calibrate.members[i + 1]
 			case .CONCAT:
 				r := number_to_calibrate.members[i + 1] 
-				// get the digits dividing by 10 and then use it to concatenate both numbers
+				// get the digits dividing by 10 and then use it to 'concatenate' both numbers
 				num_digits := 0
 				temp := r
 				for temp > 0 {
