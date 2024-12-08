@@ -228,6 +228,7 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	walked_steps := WalkedPathCount{}
 	walked_steps_loop := WalkedPathCount{}
 	turned_steps_loop := map[VisitedStep]bool{}
+	// reserve(&turned_steps_loop, 4000)
 	visitedStep: VisitedStep
 	
 	guard_finished_walk := false
