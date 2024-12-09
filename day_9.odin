@@ -1,6 +1,5 @@
 package day_9
 
-import sa "core:container/small_array"
 import "core:fmt"
 import "core:os"
 import "core:slice"
