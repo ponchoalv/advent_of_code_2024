@@ -30,7 +30,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 	elapsed := time.since(start)
 
-	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
+	fmt.printf("time elapsed part 1: %fms\n", time.duration_milliseconds(elapsed))
 	return
 }
 
@@ -41,7 +41,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 
 	elapsed := time.since(start)
 
-	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
+	fmt.printf("time elapsed part 2: %fms\n", time.duration_milliseconds(elapsed))
 	return
 }
 
@@ -133,6 +133,51 @@ get_antinodes :: proc(input: string) -> u64 {
 	}
 
 	return u64(len(antinodes_set))
+}
+
+get_antinodes_using_array :: proc(input: string) -> u64 {
+	lines := strings.split_lines(input)
+	grid_len := len(lines) - 1
+	antinodes := [50][50]bool{}
+	result:u64 = 0
+	
+	for y in 0..<grid_len {
+		for x in 0..<grid_len {
+			if lines[y] == "" || lines[y][x] == '.' {
+				continue
+			}
+
+			current_token := lines[y][x]
+			first := [2]int{y, x}
+
+			for yt in 0..<grid_len {
+				for xt in 0..<grid_len {
+					if lines[y] == "" || (yt == y && xt == x) || lines[y][x] == '.' {
+						continue
+					}
+
+					if current_token == lines[yt][xt] {
+						second := [2]int{yt, xt}
+
+						antinode := first + (first - second)
+
+						if antinode.x >= 0 &&
+					 	  antinode.y >= 0 &&
+						  antinode.x < grid_len &&
+						  antinode.y < grid_len {
+						  	// fmt.println(antinode)
+							if !antinodes[antinode[0]][antinode[1]]  {
+								antinodes[antinode[0]][antinode[1]] = true
+								result += 1
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return result
 }
 
 /*
