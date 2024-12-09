@@ -14,7 +14,6 @@ RESULT_PART_2 :: 6239783302560
 
 BLANK_ID :: 4_294_967_295
 
-
 main :: proc() {
 	fmt.println("Running day_9...")
 	test_part_1("day_9_example_input", EXAMPLE_PART_1)
@@ -26,7 +25,7 @@ main :: proc() {
 part_1 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
-	result = check_sum_single(input)
+	result = defrag_single(input)
 	elapsed := time.since(start)
 
 	fmt.printf("time elapsed part 1: %fms\n", time.duration_milliseconds(elapsed))
@@ -37,7 +36,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 
-	result = check_sum_block(input)
+	result = defrag_block(input)
 	elapsed := time.since(start)
 
 	fmt.printf("time elapsed part 2: %fms\n", time.duration_milliseconds(elapsed))
@@ -69,7 +68,7 @@ test_part_2 :: proc(input: string, expected_result: u64) {
 }
 
 read_file :: proc(filename: string) -> string {
-	data, ok := os.read_entire_file(filename, context.temp_allocator)
+	data, ok := os.read_entire_file(filename)
 	if !ok {
 		panic("failed reading file")
 	}
@@ -77,13 +76,32 @@ read_file :: proc(filename: string) -> string {
 	return string(data)
 }
 
+checksum :: proc(disk_image: []u32) -> (checksum: u64) {
+	for v, i in disk_image {
+		if v != BLANK_ID {
+			checksum += u64(v * u32(i))
+		}
+	}
+	return
+}
+
+swap_blanks_for_numbers :: proc(numbers, free_spaces: []u32, disk_image: ^[dynamic]u32) #no_bounds_check {
+	// swap values from number block to blank space block
+	for nb in soa_zip(num = numbers, blank = free_spaces) {
+		if nb.num < nb.blank {
+			break
+		}
+
+		disk_image[nb.num], disk_image[nb.blank] = disk_image[nb.blank], disk_image[nb.num]
+	}
+}
+
 // get expanded disk image, then compless by single number movements
 // we track blank spaces and number spaces to then swap them quickly
-check_sum_single :: proc(input: string) -> u64 #no_bounds_check {
+defrag_single :: proc(input: string) -> u64 #no_bounds_check {
 	disk_image := [dynamic]u32{}
-	track_blank := [dynamic]int{}
-	track_numbers := [dynamic]int{}
-	checksum: u64
+	track_blank := [dynamic]u32{}
+	track_numbers := [dynamic]u32{}
 	current_id: u32
 
 	for c, i in input {
@@ -92,13 +110,13 @@ check_sum_single :: proc(input: string) -> u64 #no_bounds_check {
 		}
 		if i % 2 == 0 {
 			for j in 0 ..< int(c - '0') {
-				append(&track_numbers, len(disk_image))
+				append(&track_numbers, u32(len(disk_image)))
 				append(&disk_image, current_id)
 			}
 			current_id += 1
 		} else {
 			for j in 0 ..< int(c - '0') {
-				append(&track_blank, len(disk_image))
+				append(&track_blank, u32(len(disk_image)))
 				append(&disk_image, BLANK_ID)
 			}
 		}
@@ -106,31 +124,18 @@ check_sum_single :: proc(input: string) -> u64 #no_bounds_check {
 
 	slice.reverse(track_numbers[:])
 
-	// will produce an array of an struct with {num:[]int, blank:[]int} where num and blank are aligned and shrinked to the same size
-	for nb in soa_zip(num = track_numbers[:], blank = track_blank[:]) {
-		if nb.num > nb.blank {
-			disk_image[nb.num], disk_image[nb.blank] = disk_image[nb.blank], disk_image[nb.num]
-		}
-	}
+	swap_blanks_for_numbers(track_numbers[:], track_blank[:], &disk_image)
 
-	for v, i in disk_image {
-		if v != BLANK_ID {
-			checksum += u64(v * u32(i))
-		}
-	}
-
-	return checksum
+	return checksum(disk_image[:])
 }
 
-
 // try to move blocks of number from right to left into the block of spaces they fit
-check_sum_block :: proc(input: string) -> u64 #no_bounds_check {
+defrag_block :: proc(input: string) -> u64 #no_bounds_check {
 	disk_image := [dynamic]u32{}
 	track_blank := map[u32][]u32{}
 	track_numbers := map[u32][]u32{}
 	track_numbers_group_index_position := [dynamic]u32{}
 	track_brank_group_index_position := [dynamic]u32{}
-	checksum: u64
 	current_id: u32
 
 	for c, i in input {
@@ -185,9 +190,7 @@ check_sum_block :: proc(input: string) -> u64 #no_bounds_check {
 			}
 
 			// swap values from number block to blank space block
-			for nb in soa_zip(num = nums_pos[:], blank = blanks_pos[:]) {
-				disk_image[nb.num], disk_image[nb.blank] = disk_image[nb.blank], disk_image[nb.num]
-			}
+			swap_blanks_for_numbers(nums_pos[:], blanks_pos[:], &disk_image)
 
 			// remove the free space block from the array of blank spaces
 			// also remove it from the dictionary with the pointers to the index that those arrays use.
@@ -203,11 +206,5 @@ check_sum_block :: proc(input: string) -> u64 #no_bounds_check {
 		}
 	}
 
-	for v, i in disk_image {
-		if v != BLANK_ID {
-			checksum += u64(v * u32(i))
-		}
-	}
-
-	return checksum
+	return checksum(disk_image[:])
 }
