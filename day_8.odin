@@ -135,7 +135,7 @@ get_antinodes :: proc(input: string) -> u64 {
 	return u64(len(antinodes_set))
 }
 
-get_antinodes_using_array :: proc(input: string) -> u64 {
+get_antinodes_using_array :: proc(input: string) -> u64 #no_bounds_check {
 	lines := strings.split_lines(input)
 	grid_len := len(lines) - 1
 	antinodes := [50][50]bool{}
