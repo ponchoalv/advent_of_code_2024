@@ -5,6 +5,8 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
+import "bit_utils"
+
 
 EXAMPLE_PART_1 :: 41
 EXAMPLE_PART_2 :: 6
@@ -269,7 +271,6 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 				direction = DIRECTION_UP
 				guard_finished_walk = false
 				loop_found = false
-				dir_in_bit := direction_to_u8(direction)
 				
 				// clear(&turned_steps_loop)
 				bit_array.clear(&walked_steps_set)
@@ -291,8 +292,8 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 						// get the previous two directions for the current possition
 						// visitedStep = VisitedStep{dir = direction, coord = current_poss}
 						// if any of those two directions was recorded we are in a loop
-						dir_in_bit = direction_to_u8(direction)
-						encoded_coord_dir := encode(u16(current_poss.x), u16(current_poss.y), dir_in_bit)
+						dir_in_bit := bit_utils.direction_to_u8(direction)
+						encoded_coord_dir := bit_utils.encode(u16(current_poss.x), u16(current_poss.y), dir_in_bit)
 						step_was_visited := bit_array.get(&walked_steps_set, encoded_coord_dir)
 
 						if step_was_visited {
@@ -316,40 +317,4 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	}
 	
 	return result
-}
-
-// might move this to a library in the future
-encode :: proc(x, y:u16, d: u8) -> u32 {
-	n_x :u32= 10 // Bits for x
-    n_y :u32= 10 // Bits for y
-    n_d :u32= 2  // Bits for direction
-
-    combined: u32 = (u32(x) << (n_y + n_d)) | (u32(y) << n_d) | u32(d)
-
-    return combined
-}
-
-decode :: proc (combined: u32) -> (x: u16, y: u16, d: u8) {
-    n_x :u32= 10 // Bits for x
-    n_y :u32= 10 // Bits for y
-    n_d :u32= 2  // Bits for direction
-
-    d = u8(combined & 0b11) // Extract direction (last 2 bits)
-    y = u16((combined >> n_d) & 0x3FF) // Extract y (next 10 bits)
-    x = u16(combined >> (n_y + n_d)) // Extract x (remaining bits)
-    return
-}
-
-direction_to_u8 :: proc(dir: Direction) -> u8 {
-	switch dir {
-		case DIRECTION_FORWARD:
-			return 0
-		case DIRECTION_DOWN:
-			return 1
-		case DIRECTION_BACKWARD:
-			return 2
-		case DIRECTION_UP:
-			return 3
-	}
-	return 4
 }
