@@ -1,5 +1,6 @@
 package day_6
 
+import "core:container/bit_array"
 import "core:fmt"
 import "core:os"
 import "core:strings"
@@ -225,10 +226,12 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	current_poss := starting_poss
 	direction := DIRECTION_UP
 
+	
+	// used to keep track coords and directions we moved
+	walked_steps_set: bit_array.Bit_Array
+
 	walked_steps := WalkedPathCount{}
 	walked_steps_loop := WalkedPathCount{}
-	turned_steps_loop := map[VisitedStep]bool{}
-	// reserve(&turned_steps_loop, 4000)
 	visitedStep: VisitedStep
 	
 	guard_finished_walk := false
@@ -266,8 +269,10 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 				direction = DIRECTION_UP
 				guard_finished_walk = false
 				loop_found = false
+				dir_in_bit := direction_to_u8(direction)
 				
-				clear(&turned_steps_loop)
+				// clear(&turned_steps_loop)
+				bit_array.clear(&walked_steps_set)
 
 				// retrieve current line
 				line = transmute([]u8)lines[coord[0]]
@@ -284,13 +289,17 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 						// loop would be if we are in a tile facing the same direction as before
 						direction = turn_right(direction)
 						// get the previous two directions for the current possition
-						visitedStep = VisitedStep{dir = direction, coord = current_poss}
+						// visitedStep = VisitedStep{dir = direction, coord = current_poss}
 						// if any of those two directions was recorded we are in a loop
-						if visitedStep in turned_steps_loop {
+						dir_in_bit = direction_to_u8(direction)
+						encoded_coord_dir := encode(u16(current_poss.x), u16(current_poss.y), dir_in_bit)
+						step_was_visited := bit_array.get(&walked_steps_set, encoded_coord_dir)
+
+						if step_was_visited {
 							result += 1
 							loop_found = true
 						} else {
-							turned_steps_loop[visitedStep] = true
+							bit_array.set(&walked_steps_set, encoded_coord_dir, true)
 						}
 						
 					}
@@ -307,4 +316,40 @@ count_guard_looping_obstacles :: proc(input: string) -> u64 #no_bounds_check {
 	}
 	
 	return result
+}
+
+// might move this to a library in the future
+encode :: proc(x, y:u16, d: u8) -> u32 {
+	n_x :u32= 10 // Bits for x
+    n_y :u32= 10 // Bits for y
+    n_d :u32= 2  // Bits for direction
+
+    combined: u32 = (u32(x) << (n_y + n_d)) | (u32(y) << n_d) | u32(d)
+
+    return combined
+}
+
+decode :: proc (combined: u32) -> (x: u16, y: u16, d: u8) {
+    n_x :u32= 10 // Bits for x
+    n_y :u32= 10 // Bits for y
+    n_d :u32= 2  // Bits for direction
+
+    d = u8(combined & 0b11) // Extract direction (last 2 bits)
+    y = u16((combined >> n_d) & 0x3FF) // Extract y (next 10 bits)
+    x = u16(combined >> (n_y + n_d)) // Extract x (remaining bits)
+    return
+}
+
+direction_to_u8 :: proc(dir: Direction) -> u8 {
+	switch dir {
+		case DIRECTION_FORWARD:
+			return 0
+		case DIRECTION_DOWN:
+			return 1
+		case DIRECTION_BACKWARD:
+			return 2
+		case DIRECTION_UP:
+			return 3
+	}
+	return 4
 }

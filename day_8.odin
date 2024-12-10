@@ -1,5 +1,6 @@
 package day_8
 
+import "core:container/bit_array"
 import sa "core:container/small_array"
 import "core:fmt"
 import "core:os"
@@ -111,9 +112,11 @@ get_anthenas_coords_by_freq :: proc(lines: []string) -> map[u8][dynamic][2]int {
 */
 get_antinodes :: proc(input: string) -> u64 {
 	lines := strings.split_lines(input)
-	grid_len := len(lines) - 1
+	grid_len := u16(len(lines) - 1)
 	anthenas_coords_by_freq := get_anthenas_coords_by_freq(lines)
-	antinodes_set := map[[2]int]bool{}
+	// track antinodes
+	antinodes_set: bit_array.Bit_Array
+	antinode_count: u64
 
 	for k, anthenas in anthenas_coords_by_freq {
 		for first in anthenas {
@@ -124,15 +127,19 @@ get_antinodes :: proc(input: string) -> u64 {
 				antinode := first + (first - second)
 				if antinode.x >= 0 &&
 				   antinode.y >= 0 &&
-				   antinode.x < grid_len &&
-				   antinode.y < grid_len {
-					antinodes_set[antinode] = true
+				   u16(antinode.x) < grid_len &&
+				   u16(antinode.y) < grid_len {
+					antinode_was_set := bit_array.get(&antinodes_set, (u16(antinode.x)*grid_len+u16(antinode.y)))
+						if !antinode_was_set {
+							antinode_count += 1
+							bit_array.set(&antinodes_set, (u16(antinode.x)*grid_len+u16(antinode.y)), true)
+						}
 				}
 			}
 		}
 	}
 
-	return u64(len(antinodes_set))
+	return antinode_count
 }
 
 get_antinodes_using_array :: proc(input: string) -> u64 #no_bounds_check {
@@ -165,7 +172,6 @@ get_antinodes_using_array :: proc(input: string) -> u64 #no_bounds_check {
 					 	  antinode.y >= 0 &&
 						  antinode.x < grid_len &&
 						  antinode.y < grid_len {
-						  	// fmt.println(antinode)
 							if !antinodes[antinode[0]][antinode[1]]  {
 								antinodes[antinode[0]][antinode[1]] = true
 								result += 1
@@ -189,9 +195,12 @@ get_antinodes_using_array :: proc(input: string) -> u64 #no_bounds_check {
 */
 get_antinodes_with_resonant_harmonics :: proc(input: string) -> u64 {
 	lines := strings.split_lines(input)
-	grid_len := len(lines) - 1
+	grid_len := u16(len(lines) - 1)
 	anthenas_coords_by_freq := get_anthenas_coords_by_freq(lines)
-	antinodes_set := map[[2]int]bool{}
+	
+	// keep track what antinodes have been visited using bit array instead of map
+	antinodes_set: bit_array.Bit_Array
+	antinode_count:u64
 
 	for k, anthenas in anthenas_coords_by_freq {
 		for first in anthenas {
@@ -201,19 +210,27 @@ get_antinodes_with_resonant_harmonics :: proc(input: string) -> u64 {
 				}
 				antinode_diretion := first - second
 				antinode := first + antinode_diretion
-				antinodes_set[first] = true
+				antinode_was_set := bit_array.get(&antinodes_set, (u16(first.x)*grid_len+u16(first.y)))
+				if !antinode_was_set {
+					antinode_count += 1
+					bit_array.set(&antinodes_set, (u16(first.x)*grid_len+u16(first.y)), true)
+				}
 				// move in antinode direction while is whithin the boundaries and add it to the antinodes set
 				for antinode.x >= 0 &&
 				    antinode.y >= 0 &&
-				    antinode.x < grid_len &&
-				    antinode.y < grid_len {
-					antinodes_set[antinode] = true
-					antinode += antinode_diretion
+				    u16(antinode.x) < grid_len &&
+				    u16(antinode.y) < grid_len {
+				    	antinode_was_set := bit_array.get(&antinodes_set, (u16(antinode.x)*grid_len+u16(antinode.y)))
+						if !antinode_was_set {
+							antinode_count += 1
+							bit_array.set(&antinodes_set, (u16(antinode.x)*grid_len+u16(antinode.y)), true)
+						}
+						antinode += antinode_diretion
 				}
 			}
 
 		}
 	}
 
-	return u64(len(antinodes_set))
+	return antinode_count
 }
