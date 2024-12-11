@@ -2,12 +2,12 @@ package day_7
 
 import sa "core:container/small_array"
 import "core:fmt"
-import "core:math"
 import "core:os"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "core:time"
+import "aoc_math"
 
 EXAMPLE_PART_1 :: 3749
 EXAMPLE_PART_2 :: 11387
@@ -149,19 +149,6 @@ parse_numbers_to_calibrate_recursive :: proc(
 	return
 }
 
-concat_number :: proc(first, second: u64) -> u64 {
-	num_digits := 0
-	temp := second
-	for temp > 0 {
-		num_digits += 1
-		temp /= 10
-	}
-
-	// Concatenate `current_sum` and `r` using arithmetic
-	factor := u64(math.pow(10, f64(num_digits))) // 10^num_digits
-	return first * factor + second
-}
-
 tune_number_calibration_recursive :: proc(
 	target, accumulator: u64,
 	next: []u64,
@@ -177,7 +164,7 @@ tune_number_calibration_recursive :: proc(
 		(with_concat &&
 				tune_number_calibration_recursive(
 					target,
-					concat_number(accumulator, next[0]),
+					aoc_math.concat_number(accumulator, next[0]),
 					next[1:],
 					with_concat,
 				)) \
