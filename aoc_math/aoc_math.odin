@@ -10,6 +10,9 @@ get_digits :: proc(num: u64) -> (count: u64) {
 		count += 1
 	}
 
+	// could also be done using this math trick
+	// count = u64(math.floor(math.log10_f32(f32(num))))+1
+
 	return
 }
 

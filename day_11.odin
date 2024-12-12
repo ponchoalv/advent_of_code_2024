@@ -1,11 +1,11 @@
 package day_11
 
+import "aoc_math"
 import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:time"
-import "aoc_math"
 
 
 EXAMPLE_PART_1 :: 55312
@@ -79,8 +79,9 @@ read_file :: proc(filename: string) -> string {
 
 // counting blinks, used a list first, but program crashed after reaching 4gb of ram on part 2
 // after that decided to go with a map to count frequencies of ocurrence of the numbers after blink.
-count_after_blink :: proc(input: string, blink_times: int) -> (result: u64) {
+count_after_blink :: proc(input: string, blink_times: u64) -> (result: u64) {
 	stones := map[u64]u64{}
+	memo := map[[2]u64]u64{}
 
 	for n in strings.split(input, " ") {
 		num, _ := strconv.parse_u64(strings.trim(n, "\n "))
@@ -123,4 +124,39 @@ blink_at_stones :: proc(stones: map[u64]u64) -> (result: map[u64]u64) {
 		}
 	}
 	return
+}
+
+/*
+Could be used to solve both parts with the memo, just call it like this:
+	for stone in stones {
+		result += blink_recursive(stone, blink_times, &memo)
+	}
+
+It have similar performance as the one without recursion. I found more readable the other one.
+*/
+blink_recursive :: proc(stone: u64, step: u64, memo: ^map[[2]u64]u64) -> u64 {
+	if step == 0 {
+		return 1
+	}
+	
+	if value, found := memo[{stone, step}]; found {
+		return value
+	}
+
+	if stone == 0 {
+		return blink_recursive(1, step - 1, memo)
+	}
+
+
+	result: u64
+	d := aoc_math.get_digits(stone)
+	if d % 2 == 0 {
+		first, second := aoc_math.split_number(stone, d)
+		result = blink_recursive(first, step - 1, memo) + blink_recursive(second, step - 1, memo)
+	} else {
+		result = blink_recursive(stone * 2024, step - 1, memo)
+	}
+
+	memo[{stone, step}] = result
+	return result
 }
