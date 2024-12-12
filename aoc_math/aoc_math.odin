@@ -17,7 +17,7 @@ split_number :: proc(num: u64, digits: u64) -> (front, back: u64) {
 	divider := u64(math.pow(f64(10), f64(digits / 2)))
 
 	front = num / divider
-	back = num - (front * divider)
+	back = num % divider
 	return
 }
 

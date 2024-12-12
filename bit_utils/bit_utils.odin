@@ -55,3 +55,22 @@ direction_to_u8 :: proc(dir: [2]int) -> u8 {
 direction_from_u8 :: proc(dir: Direction) -> [2]int {
 	return Dir_Vec[dir]
 }
+
+
+// might move this to a library in the future
+encode_u32 :: proc(x, y:u32) -> (combined:u64) {
+    n_y :u64= 32 // Bits for y
+    
+
+    combined = (u64(x) << (n_y) | (u64(y)))
+
+    return
+}
+
+decode_u32 :: proc (combined: u64) -> (x: u32, y: u32) {
+    n_y :u64= 32 // Bits for y
+
+    y = u32((combined) & 0xFFFFFFFF) // Extract y (next 32 bits 11 1111 1111)
+    x = u32(combined >> (n_y)) // Extract x (remaining bits)
+    return
+}
