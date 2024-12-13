@@ -133,78 +133,114 @@ get_plot_map_price :: proc(input: string, with_bulk_discount: bool = false) -> (
 	return
 }
 
-distance :: proc(a,b:[2]i16) -> i16 {
-	return abs(a.x-b.x) + abs(a.y-b.y)
-}
+count_edges :: proc(coords: [][2]i16) -> (perimiter: i16) {
+	// Initialize variables
+	track_coords: bit_array.Bit_Array
+	groups := [dynamic][][2]i16{}
 
-by_x :: proc(i, j: [2]i16) -> bool {
-	return i.x < j.x || (i.x == j.x && i.y < i.y)
-}
-
-by_y :: proc(i, j: [2]i16) -> bool {
-	return i.y < j.y || (i.y == j.y && i.x < j.x)
-}
-
-count_edges :: proc(coords: [][2]i16) -> (groups: i16) {
-	groups = 1
-	for i in 0..<len(coords)-1 {
-		distance := distance(coords[i], coords[i+1]) 
-		// fmt.println(coords[i], coords[i+1], distance)
-		if distance > 1 {
-			groups += 1
-		}
+	// Helper function to check adjacency (Manhattan distance = 1)
+	is_adjacent :: proc(a: [2]i16, b: [2]i16) -> bool {
+		return (abs(a.x - b.x) + abs(a.y - b.y)) == 1
 	}
-	return
-}
 
-// count intersections between edge plots to get an idea of the amount of sides we got in the area
-get_perimiter :: proc(plot_area: PlotArea) -> (perimiter: u64) {
-		track_top := [dynamic][2]i16{}
-		track_bottom := [dynamic][2]i16{}
-		track_left := [dynamic][2]i16{}
-		track_right := [dynamic][2]i16{}
-		
-		// group coordinates by edge type
-		for plot in plot_area.plots {
-			for edge in plot.edges {
-				switch edge {
-				case .TOP:
-					append(&track_top, plot.position)
-				case .BOTTOM:
-					append(&track_bottom, plot.position)
-				case .LEFT:
-					append(&track_left, plot.position)
-				case .RIGHT:
-					append(&track_right, plot.position)
+	// Iterate over all coordinates
+	for i in 0 ..< len(coords) {
+		coord := coords[i]
+
+		// Skip if already visited
+		exists := bit_array.get(
+			&track_coords,
+			bit_utils.encode(u16(coord.x), u16(coord.y), 0),
+		)
+		if exists {
+			continue
+		}
+
+		// Start a new group
+		group := [dynamic][2]i16{}
+		queue : sa.Small_Array(140, [2]i16)
+
+		bit_array.set(&track_coords, bit_utils.encode(u16(coord.x), u16(coord.y), 0))
+
+
+		sa.push(&queue, coord)
+		// BFS to find all connected coordinates
+		for sa.len(queue) > 0 {
+			current := sa.pop_front(&queue)
+
+			append(&group, current)
+
+			// Find all adjacent, unvisited neighbors
+			for j in 0 ..< len(coords) {
+				neighbor := coords[j]
+				if is_adjacent(current, neighbor) {
+					neighbor_exists := bit_array.get(
+						&track_coords,
+						bit_utils.encode(u16(neighbor.x), u16(neighbor.y), 0),
+					)
+					if !neighbor_exists {
+						bit_array.set(&track_coords, bit_utils.encode(u16(neighbor.x), u16(neighbor.y), 0))
+						sa.push(&queue, neighbor)
+					}
 				}
 			}
 		}
 
-		// fmt.println(rune(plot_area.plot_type), "TOP")
-		// fmt.println(track_top)
-		slice.stable_sort_by(track_top[:], by_x)
-		top := count_edges(track_top[:])
-		// fmt.println(top)
-		
-		// fmt.println(rune(plot_area.plot_type), "BOTTOM")
-		// fmt.println(track_bottom)
-		slice.stable_sort_by(track_bottom[:], by_x)
-		bottom := count_edges(track_bottom[:])
-		// fmt.println(bottom)
+		// Store the completed group
+		append(&groups, group[:])
+	}
+	// fmt.println(groups)
+	return i16(len(groups))
+}
 
-		// fmt.println(rune(plot_area.plot_type), "LEFT")
-		// fmt.println(track_left)
-		slice.stable_sort_by(track_left[:], by_y)
-		left := count_edges(track_left[:])
-		// fmt.println(left)
-		
-		// fmt.println(rune(plot_area.plot_type), "RIGHT")
-		// fmt.println(track_right)
-		slice.stable_sort_by(track_right[:], by_y)
-		right := count_edges(track_right[:])
-		// fmt.println(right)
+// count intersections between edge plots to get an idea of the amount of sides we got in the area
+get_perimiter :: proc(plot_area: PlotArea) -> (perimiter: u64) {
+	track_top := [dynamic][2]i16{}
+	track_bottom := [dynamic][2]i16{}
+	track_left := [dynamic][2]i16{}
+	track_right := [dynamic][2]i16{}
 
-		return u64(top + bottom + left + right)
+	// group coordinates by edge type
+	for plot in plot_area.plots {
+		for edge in plot.edges {
+			switch edge {
+			case .TOP:
+				append(&track_top, plot.position)
+			case .BOTTOM:
+				append(&track_bottom, plot.position)
+			case .LEFT:
+				append(&track_left, plot.position)
+			case .RIGHT:
+				append(&track_right, plot.position)
+			}
+		}
+	}
+
+	// fmt.println(rune(plot_area.plot_type), "TOP")
+	// fmt.println(track_top)
+	// slice.stable_sort_by(track_top[:], by_x)
+	top := count_edges(track_top[:])
+	// fmt.println(top)
+
+	// fmt.println(rune(plot_area.plot_type), "BOTTOM")
+	// fmt.println(track_bottom)
+	// slice.stable_sort_by(track_bottom[:], by_x)
+	bottom := count_edges(track_bottom[:])
+	// fmt.println(bottom)
+
+	// fmt.println(rune(plot_area.plot_type), "LEFT")
+	// fmt.println(track_left)
+	// slice.stable_sort_by(track_left[:], by_y)
+	left := count_edges(track_left[:])
+	// fmt.println(left)
+
+	// fmt.println(rune(plot_area.plot_type), "RIGHT")
+	// fmt.println(track_right)
+	// slice.stable_sort_by(track_right[:], by_y)
+	right := count_edges(track_right[:])
+	// fmt.println(right)
+
+	return u64(top + bottom + left + right)
 }
 
 get_price :: proc(plot_area: PlotArea, with_bulk_discount: bool = false) -> u64 {
