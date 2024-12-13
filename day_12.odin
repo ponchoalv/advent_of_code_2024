@@ -133,110 +133,78 @@ get_plot_map_price :: proc(input: string, with_bulk_discount: bool = false) -> (
 	return
 }
 
+distance :: proc(a,b:[2]i16) -> i16 {
+	return abs(a.x-b.x) + abs(a.y-b.y)
+}
+
+by_x :: proc(i, j: [2]i16) -> bool {
+	return i.x < j.x || (i.x == j.x && i.y < i.y)
+}
+
+by_y :: proc(i, j: [2]i16) -> bool {
+	return i.y < j.y || (i.y == j.y && i.x < j.x)
+}
+
+count_edges :: proc(coords: [][2]i16) -> (groups: i16) {
+	groups = 1
+	for i in 0..<len(coords)-1 {
+		distance := distance(coords[i], coords[i+1]) 
+		// fmt.println(coords[i], coords[i+1], distance)
+		if distance > 1 {
+			groups += 1
+		}
+	}
+	return
+}
+
+// count intersections between edge plots to get an idea of the amount of sides we got in the area
 get_perimiter :: proc(plot_area: PlotArea) -> (perimiter: u64) {
-		track_top := map[[2]i16]bool{}
-		track_bottom := map[[2]i16]bool{}
-		track_left := map[[2]i16]bool{}
-		track_right := map[[2]i16]bool{}
-		track_tl := map[[2]i16]bool{}
-		track_tr := map[[2]i16]bool{}
-		track_bu := map[[2]i16]bool{}
-		track_fu := map[[2]i16]bool{}
-
-		for plot in plot_area.plots {
-			for edge in plot.edges {
-				switch edge {
-				case .TOP:
-					track_top[plot.position]=true
-				case .BOTTOM:
-					track_bottom[plot.position]=true
-				case .LEFT:
-					track_left[plot.position]=true
-				case .RIGHT:
-					track_right[plot.position]=true
-				}
-			}
-		}
-
-		for plot in plot_area.plots {
-			for edge in plot.edges {
-				switch edge {
-				case .TOP:
-					
-				case .BOTTOM:
-					track_bottom[plot.position]=true
-				case .LEFT:
-					track_left[plot.position]=true
-				case .RIGHT:
-					track_right[plot.position]=true
-				}
-			}
-		}
+		track_top := [dynamic][2]i16{}
+		track_bottom := [dynamic][2]i16{}
+		track_left := [dynamic][2]i16{}
+		track_right := [dynamic][2]i16{}
 		
-		for k in track_top {
-			// if is in top and left is an outer corner
-			if _, ok := track_left[k]; ok {
-				track_tl[k] = true
-				perimiter += 1
-			}
-
-			// if is in top and rigt is an outer corner
-			if _, ok := track_right[k]; ok {
-				track_tr[k] = true
-				perimiter += 1
-			}
-
-			moved_back_up := k + [2]i16{-1,-1}
-			// if is in right and moved_back_up is an inner corner
-			if _, ok := track_right[moved_back_up]; ok {
-				track_bu[moved_back_up] = true
-				perimiter += 1
-			}
-
-			moved_front_up := k + [2]i16{-1,1}
-			// if is in top and moved_front_up is an inner corner
-			if _, ok := track_left[moved_front_up]; ok {
-				track_fu[moved_front_up]=true
-				perimiter += 1
-			}
-		}
-
-		for k in track_bottom {
-			// if is in bottom and left is an outer corner
-			if _, ok := track_left[k]; ok {
-				// do not double count simtrical intersection from front up diagonal
-				if _, found := track_fu[k]; !found {
-					perimiter += 1
-				}
-			}
-
-			// if is in bottom and rigt is an outer corner
-			if _, ok := track_right[k]; ok {
-				// do not double count simtrical intersection from back up diagonal
-				if _, found := track_bu[k]; !found {
-					perimiter += 1
-				}
-			}
-
-			moved_back_bottom := k + [2]i16{1,-1}
-			// if is in right and moved_back_bottom is an inner corner
-			if _, ok := track_right[moved_back_bottom]; ok {
-				// do not double count simtrical intersection from top right
-				if _, found := track_tr[moved_back_bottom]; !found {
-					perimiter += 1
-				}
-			}
-
-			moved_front_bottom := k + [2]i16{1,1}
-			// do not double count simtrical intersection from top right
-			if _, ok := track_left[moved_front_bottom]; ok {
-				if _, found := track_tl[moved_front_bottom]; !found {
-					perimiter += 1
+		// group coordinates by edge type
+		for plot in plot_area.plots {
+			for edge in plot.edges {
+				switch edge {
+				case .TOP:
+					append(&track_top, plot.position)
+				case .BOTTOM:
+					append(&track_bottom, plot.position)
+				case .LEFT:
+					append(&track_left, plot.position)
+				case .RIGHT:
+					append(&track_right, plot.position)
 				}
 			}
 		}
 
-		return
+		// fmt.println(rune(plot_area.plot_type), "TOP")
+		// fmt.println(track_top)
+		slice.stable_sort_by(track_top[:], by_x)
+		top := count_edges(track_top[:])
+		// fmt.println(top)
+		
+		// fmt.println(rune(plot_area.plot_type), "BOTTOM")
+		// fmt.println(track_bottom)
+		slice.stable_sort_by(track_bottom[:], by_x)
+		bottom := count_edges(track_bottom[:])
+		// fmt.println(bottom)
+
+		// fmt.println(rune(plot_area.plot_type), "LEFT")
+		// fmt.println(track_left)
+		slice.stable_sort_by(track_left[:], by_y)
+		left := count_edges(track_left[:])
+		// fmt.println(left)
+		
+		// fmt.println(rune(plot_area.plot_type), "RIGHT")
+		// fmt.println(track_right)
+		slice.stable_sort_by(track_right[:], by_y)
+		right := count_edges(track_right[:])
+		// fmt.println(right)
+
+		return u64(top + bottom + left + right)
 }
 
 get_price :: proc(plot_area: PlotArea, with_bulk_discount: bool = false) -> u64 {
@@ -298,7 +266,7 @@ get_plot_area :: proc(
 	result: PlotArea,
 ) {
 	plots := [dynamic]Plot{}
-	q: sa.Small_Array(500, Plot)
+	q: sa.Small_Array(200, Plot)
 	sa.push(&q, plot)
 
 	for sa.len(q) > 0 {
