@@ -8,6 +8,7 @@ import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:time"
+import "slice_helpers"
 
 EXAMPLE_PART_1 :: 1930
 EXAMPLE_PART_2 :: 1206
@@ -133,6 +134,18 @@ get_plot_map_price :: proc(input: string, with_bulk_discount: bool = false) -> (
 	return
 }
 
+distance :: proc(a,b:[2]i16) -> i16 {
+	return abs(a.x-b.x) + abs(a.y-b.y)
+}
+
+by_x :: proc(i, j: [2]i16) -> bool {
+	return i.x < j.x || (i.x == j.x && i.y < i.y)
+}
+
+by_y :: proc(i, j: [2]i16) -> bool {
+	return i.y < j.y || (i.y == j.y && i.x < j.x)
+}
+
 count_edges :: proc(coords: [][2]i16) -> (perimiter: i16) {
 	// Initialize variables
 	track_coords: bit_array.Bit_Array
@@ -158,7 +171,7 @@ count_edges :: proc(coords: [][2]i16) -> (perimiter: i16) {
 
 		// Start a new group
 		group := [dynamic][2]i16{}
-		queue : sa.Small_Array(140, [2]i16)
+		queue : sa.Small_Array(2, [2]i16)
 
 		bit_array.set(&track_coords, bit_utils.encode(u16(coord.x), u16(coord.y), 0))
 
@@ -166,7 +179,7 @@ count_edges :: proc(coords: [][2]i16) -> (perimiter: i16) {
 		sa.push(&queue, coord)
 		// BFS to find all connected coordinates
 		for sa.len(queue) > 0 {
-			current := sa.pop_front(&queue)
+			current := sa.pop_back(&queue)
 
 			append(&group, current)
 
@@ -191,6 +204,17 @@ count_edges :: proc(coords: [][2]i16) -> (perimiter: i16) {
 	}
 	// fmt.println(groups)
 	return i16(len(groups))
+}
+
+group_by_distance :: proc(a, b: [2]i16) -> bool {
+	return abs(a.x-b.x) + abs(a.y-b.y) == 1
+}
+
+count_edges_failed :: proc(coords: [][2]i16) -> (perimiter: i16) {
+	groups := slice_helpers.group_by(coords, group_by_distance)
+
+	perimiter = i16(len(groups))
+	return
 }
 
 // count intersections between edge plots to get an idea of the amount of sides we got in the area
@@ -236,7 +260,7 @@ get_perimiter :: proc(plot_area: PlotArea) -> (perimiter: u64) {
 
 	// fmt.println(rune(plot_area.plot_type), "RIGHT")
 	// fmt.println(track_right)
-	// slice.stable_sort_by(track_right[:], by_y)
+	slice.stable_sort_by(track_right[:], by_y)
 	right := count_edges(track_right[:])
 	// fmt.println(right)
 
