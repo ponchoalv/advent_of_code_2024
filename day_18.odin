@@ -2,7 +2,7 @@ package day_18
 
 import bu "bit_utils"
 import qu "core:container/priority_queue"
-import qq "core:container/queue"
+import "core:container/queue"
 import "core:fmt"
 import "core:os"
 import "core:strconv"
@@ -48,6 +48,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 	memory_grid := [][]Tile{}
 	target := Tile{}
+	walked_tiles := map[[2]int][dynamic][2]int{}
 
 	if is_example {
 		memory_grid = parse_grid(input, EXAMPLE_GRID, 12)
@@ -58,7 +59,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	}
 
 	start_tile := memory_grid[0][0]
-	result = u64(find_paths(memory_grid,start_tile,target))
+	result = u64(find_paths(memory_grid,start_tile,target, &walked_tiles))
 
 	elapsed := time.since(start)
 
@@ -89,20 +90,51 @@ part_2 :: proc(filename: string) -> (result: [2]int) {
 	start_tile := memory_grid[0][0]
 
 	corruped_bytes := parse_corrup_bytes(input)
-	// fmt.println(corruped_bytes)
-	for i in corrupted_base..<len(corruped_bytes) {
-		corruped_byte := corruped_bytes[i]
-		tile := memory_grid[corruped_byte.x][corruped_byte.y]
-		tile.type = .CORRUPTED
-		memory_grid[corruped_byte.x][corruped_byte.y] = tile
+	walked_tiles := map[[2]int][dynamic][2]int{}
 
-		reached := find_paths(memory_grid,start_tile,target)
+	// track all possible paths to the target
+	start_2 := time.now()
+	find_paths(memory_grid,start_tile,target,&walked_tiles, true)
+	elapsed_2 := time.since(start)
+
+	fmt.printf("time spent searching all paths: %fms\n", time.duration_milliseconds(elapsed_2))
+
+
+	// remove from all possible trails to target the corruped bytes one by one in order
+	start_3 := time.now()
+	track := map[[2]int]bool{}
+	q: queue.Queue([2]int)
+
+	for i in corrupted_base..<len(corruped_bytes) {
+		if _, found := walked_tiles[corruped_bytes[i]]; found {
+			delete_key(&walked_tiles, corruped_bytes[i])
+		} else {
+			continue
+		}
+
+		queue.clear(&q)
+		clear(&track)
+		queue.push(&q, target.position)
 		
-		if reached == -1 {
+		for queue.len(q) > 0 {
+			cur := queue.pop_front(&q)
+			if n, ok := walked_tiles[cur]; ok {
+				for next in n {
+					if _, found := track[next]; !found {
+						track[next]=true
+						queue.push(&q, next)
+					}
+				}
+			}
+		}
+
+		if _, found := track[start_tile.position]; !found {
 			result = corruped_bytes[i]
 			break
 		}
 	}
+	elapsed_3 := time.since(start)
+	fmt.printf("time spent searching all paths: %fms\n", time.duration_milliseconds(elapsed_3))
 
 	elapsed := time.since(start)
 
@@ -151,6 +183,7 @@ parse_grid :: proc(input: string, grid_size: int, corruped_byes: int) -> [][]Til
 		for x in 0 ..< grid_size {
 			tile := Tile{}
 			tile.type = .EMPTY
+			// first tile shouldn't have any cost
 			tile.cost = 0 if x == 0 && y == 0 else 1
 			tile.position = [2]int{y, x}
 			append(&row, tile)
@@ -181,7 +214,6 @@ parse_grid :: proc(input: string, grid_size: int, corruped_byes: int) -> [][]Til
 
 	return result[:]
 }
-
 
 print_grid :: proc(grid: [][]Tile) {
 	for y in 0 ..< len(grid) {
@@ -220,7 +252,7 @@ less :: proc(a, b: Tile) -> bool {
 	return a.cost < b.cost
 }
 
-find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile) -> int {
+find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walked_tiles: ^map[[2]int][dynamic][2]int, search_paths:bool = false) -> int {
 	costs := map[[3]int]int{}
 	q: qu.Priority_Queue(Tile)
 	qu.init(&q, less, qu.default_swap_proc(Tile))
@@ -230,21 +262,34 @@ find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile) -> int {
 		current := qu.pop(&q)
 
 		if current.position == target.position {
-			return current.cost
+			if search_paths {
+				continue
+			} else {
+				return current.cost
+			}
 		} else {
 			for move in get_neighbours(grid, current) {
-				move_recorded_cost, ok :=
-					costs[[3]int{move.position.x, move.position.y, int(move.direction)}]
+				move_recorded_cost, ok := costs[[3]int{move.position.x, move.position.y, int(move.direction)}]
 				if !ok {
-					move_recorded_cost = 999999999
+					move_recorded_cost = max(int)
 				}
+
 				if current.cost + move.cost < move_recorded_cost {
-					costs[[3]int{move.position.x, move.position.y, int(move.direction)}] =
-						current.cost + move.cost
+					costs[[3]int{move.position.x, move.position.y, int(move.direction)}] = current.cost + move.cost
 					move_n := Tile{}
 					move_n = move
 					move_n.cost = current.cost + move.cost
 					qu.push(&q, move_n)
+				}
+
+				if search_paths {
+					if v, found := walked_tiles[move.position]; found {
+						append(&walked_tiles[move.position], current.position)
+					} else {
+						position := [dynamic][2]int{}
+						append(&position, current.position)
+						walked_tiles[move.position] = position
+					}	
 				}
 			}
 		}
