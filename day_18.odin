@@ -1,10 +1,9 @@
 package day_18
 
-import bu "bit_utils"
-import qu "core:container/priority_queue"
-import ba "core:container/bit_array"
-import sa "core:container/small_array"
 import "aoc_search"
+import bu "bit_utils"
+import ba "core:container/bit_array"
+import qu "core:container/priority_queue"
 import "core:container/queue"
 import "core:fmt"
 import "core:os"
@@ -13,10 +12,10 @@ import "core:strings"
 import "core:time"
 
 EXAMPLE_PART_1 :: 22
-EXAMPLE_PART_2 :: [2]int{1,6}
+EXAMPLE_PART_2 :: [2]int{1, 6}
 
 RESULT_PART_1 :: 454
-RESULT_PART_2 :: [2]int{51,8}
+RESULT_PART_2 :: [2]int{51, 8}
 
 EXAMPLE_GRID_SIZE :: 7
 REAL_GRID_SIZE :: 71
@@ -55,10 +54,10 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 	if is_example {
 		memory_grid = parse_grid(input, EXAMPLE_GRID_SIZE, 12)
-		target = memory_grid[EXAMPLE_GRID_SIZE-1][EXAMPLE_GRID_SIZE-1]
+		target = memory_grid[EXAMPLE_GRID_SIZE - 1][EXAMPLE_GRID_SIZE - 1]
 	} else {
 		memory_grid = parse_grid(input, REAL_GRID_SIZE, 1024)
-		target = memory_grid[REAL_GRID_SIZE-1][REAL_GRID_SIZE-1]
+		target = memory_grid[REAL_GRID_SIZE - 1][REAL_GRID_SIZE - 1]
 	}
 
 	start_tile := memory_grid[0][0]
@@ -73,21 +72,21 @@ part_1 :: proc(filename: string) -> (result: u64) {
 part_2 :: proc(filename: string) -> (result: [2]int) {
 	start := time.now()
 	input := read_file(filename)
-	
+
 	is_example := (cast(^bool)context.user_ptr)^
 
 	memory_grid := [][]Tile{}
 	target := Tile{}
-	corrupted_base :=0
+	corrupted_base := 0
 
 	if is_example {
-		corrupted_base=12
+		corrupted_base = 12
 		memory_grid = parse_grid(input, EXAMPLE_GRID_SIZE, corrupted_base)
-		target = memory_grid[EXAMPLE_GRID_SIZE-1][EXAMPLE_GRID_SIZE-1]
+		target = memory_grid[EXAMPLE_GRID_SIZE - 1][EXAMPLE_GRID_SIZE - 1]
 	} else {
-		corrupted_base=1024
+		corrupted_base = 1024
 		memory_grid = parse_grid(input, REAL_GRID_SIZE, corrupted_base)
-		target = memory_grid[REAL_GRID_SIZE-1][REAL_GRID_SIZE-1]
+		target = memory_grid[REAL_GRID_SIZE - 1][REAL_GRID_SIZE - 1]
 	}
 
 	start_tile := memory_grid[0][0]
@@ -97,7 +96,7 @@ part_2 :: proc(filename: string) -> (result: [2]int) {
 
 	// track all possible paths to the target
 	start_2 := time.now()
-	find_paths(memory_grid,start_tile,target,&walked_tiles, true)
+	find_paths(memory_grid, start_tile, target, &walked_tiles)
 	elapsed_2 := time.since(start)
 
 	fmt.printf("time spent searching all paths: %fms\n", time.duration_milliseconds(elapsed_2))
@@ -105,40 +104,13 @@ part_2 :: proc(filename: string) -> (result: [2]int) {
 
 	// remove from all possible trails to target the corruped bytes one by one in order
 	start_3 := time.now()
-	track : ba.Bit_Array
-	q: queue.Queue([2]int)
-	queue.reserve(&q, 1000)
-
-	#no_bounds_check for i in corrupted_base..<len(corruped_bytes) {
-		if found := corruped_bytes[i] in walked_tiles; found {
-			delete_key(&walked_tiles, corruped_bytes[i])
-		} else {
-			continue
-		}
-
-		queue.clear(&q)
-		ba.clear(&track)
-		queue.push(&q, target.position)
-		
-		#no_bounds_check  for queue.len(q) > 0 {
-			cur := queue.pop_front(&q)
-			if n, ok := walked_tiles[cur]; ok {
-				for next in n {
-					found := ba.get(&track, bu.encode(u16(next.x), u16(next.y), 0))
-					if !found {
-						ba.set(&track, bu.encode(u16(next.x), u16(next.y), 0))
-						queue.push(&q, next)
-					}
-				}
-			}
-		}
-
-		found := ba.get(&track, bu.encode(u16(start_tile.position.x), u16(start_tile.position.y), 0))
-		if !found {
-			result = corruped_bytes[i]
-			break
-		}
-	}
+	result = find_blocking_corruped_byte(
+		&walked_tiles,
+		corruped_bytes,
+		corrupted_base,
+		start_tile,
+		target,
+	)
 
 	elapsed_3 := time.since(start)
 	fmt.printf("time spent searching all paths: %fms\n", time.duration_milliseconds(elapsed_3))
@@ -241,10 +213,13 @@ print_grid :: proc(grid: [][]Tile) {
 get_neighbours :: proc(grid: [][]Tile, current: Tile) -> []Tile {
 	result := [dynamic]Tile{}
 
-	#no_bounds_check for dir in bu.Direction {
+	for dir in bu.Direction {
 		coord_dir := bu.Dir_Vec[dir]
 		new_coord := current.position + coord_dir
-		if new_coord.x >= 0 && new_coord.x < len(grid) && new_coord.y >= 0 && new_coord.y < len(grid) {
+		if new_coord.x >= 0 &&
+		   new_coord.x < len(grid) &&
+		   new_coord.y >= 0 &&
+		   new_coord.y < len(grid) {
 			tile := grid[new_coord.x][new_coord.y]
 			if tile.type != .CORRUPTED {
 				append(&result, tile)
@@ -259,43 +234,30 @@ less :: proc(a, b: Tile) -> bool {
 	return a.cost < b.cost
 }
 
-find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walked_tiles: ^map[[2]int][dynamic][2]int, search_paths:bool = false) -> int #no_bounds_check {
+find_paths :: proc(
+	grid: [][]Tile,
+	start: Tile,
+	target: Tile,
+	walked_tiles: ^map[[2]int][dynamic][2]int,
+) -> int #no_bounds_check {
 	costs := map[[3]int]int{}
-	q: sa.Small_Array(50, Tile)
-	sa.push(&q, start)
+	q: queue.Queue(Tile)
+	queue.push(&q, start)
 
-	for sa.len(q) > 0 {
-		current := sa.pop_front(&q)
+	for queue.len(q) > 0 {
+		current := queue.pop_front(&q)
 
 		if current.position == target.position {
-			if search_paths {
-				continue
-			} else {
-				return current.cost
-			}
+			continue
 		} else {
 			for move in get_neighbours(grid, current) {
-				move_recorded_cost, ok := costs[[3]int{move.position.x, move.position.y, int(move.direction)}]
-				if !ok {
-					move_recorded_cost = max(int)
-				}
-
-				if current.cost + move.cost < move_recorded_cost {
-					costs[[3]int{move.position.x, move.position.y, int(move.direction)}] = current.cost + move.cost
-					move_n := Tile{}
-					move_n = move
-					move_n.cost = current.cost + move.cost
-					sa.push(&q, move_n)
-				}
-
-				if search_paths {
-					if v, found := walked_tiles[move.position]; found {
-						append(&walked_tiles[move.position], current.position)
-					} else {
-						position := [dynamic][2]int{}
-						append(&position, current.position)
-						walked_tiles[move.position] = position
-					}	
+				if !(move.position in walked_tiles) {
+					queue.push(&q, move)
+					position := [dynamic][2]int{}
+					append(&position, current.position)
+					walked_tiles[move.position] = position
+				} else {
+					append(&walked_tiles[move.position], current.position)
 				}
 			}
 		}
@@ -303,7 +265,7 @@ find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walked_tiles: ^map
 	return -1
 }
 
-parse_corrup_bytes :: proc(input:string) ->[][2]int {
+parse_corrup_bytes :: proc(input: string) -> [][2]int {
 	result := [dynamic][2]int{}
 
 	for line in strings.split_lines(input) {
@@ -320,4 +282,47 @@ parse_corrup_bytes :: proc(input:string) ->[][2]int {
 	}
 
 	return result[:]
+}
+
+find_blocking_corruped_byte :: proc(
+	walked_tiles: ^map[[2]int][dynamic][2]int,
+	corruped_bytes: [][2]int,
+	starting_byte: int,
+	start, target: Tile,
+) -> [2]int {
+	track: ba.Bit_Array
+	q: queue.Queue([2]int)
+	queue.reserve(&q, 1000)
+
+	#no_bounds_check for i in starting_byte ..< len(corruped_bytes) {
+		if found := corruped_bytes[i] in walked_tiles; found {
+			delete_key(walked_tiles, corruped_bytes[i])
+		} else {
+			continue
+		}
+
+		queue.clear(&q)
+		ba.clear(&track)
+		queue.push(&q, target.position)
+
+		for queue.len(q) > 0 {
+			cur := queue.pop_front(&q)
+			if n, ok := walked_tiles[cur]; ok {
+				for next in n {
+					found := ba.get(&track, bu.encode(u16(next.x), u16(next.y), 0))
+					if !found {
+						ba.set(&track, bu.encode(u16(next.x), u16(next.y), 0))
+						queue.push(&q, next)
+					}
+				}
+			}
+		}
+
+		found := ba.get(&track, bu.encode(u16(start.position.x), u16(start.position.y), 0))
+
+		if !found {
+			return corruped_bytes[i]
+		}
+	}
+	return 0
 }
