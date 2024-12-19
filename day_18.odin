@@ -2,6 +2,7 @@ package day_18
 
 import bu "bit_utils"
 import qu "core:container/priority_queue"
+import "aoc_search"
 import "core:container/queue"
 import "core:fmt"
 import "core:os"
@@ -59,7 +60,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	}
 
 	start_tile := memory_grid[0][0]
-	result = u64(find_paths(memory_grid,start_tile,target, &walked_tiles))
+	result = u64(aoc_search.dijkstra(memory_grid, start_tile, target, less, get_neighbours))
 
 	elapsed := time.since(start)
 
