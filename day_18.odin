@@ -2,6 +2,8 @@ package day_18
 
 import bu "bit_utils"
 import qu "core:container/priority_queue"
+import ba "core:container/bit_array"
+import sa "core:container/small_array"
 import "aoc_search"
 import "core:container/queue"
 import "core:fmt"
@@ -16,8 +18,8 @@ EXAMPLE_PART_2 :: [2]int{1,6}
 RESULT_PART_1 :: 454
 RESULT_PART_2 :: [2]int{51,8}
 
-EXAMPLE_GRID :: 7
-REAL_GRID :: 71
+EXAMPLE_GRID_SIZE :: 7
+REAL_GRID_SIZE :: 71
 
 TileType :: enum {
 	CORRUPTED,
@@ -52,11 +54,11 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	walked_tiles := map[[2]int][dynamic][2]int{}
 
 	if is_example {
-		memory_grid = parse_grid(input, EXAMPLE_GRID, 12)
-		target = memory_grid[EXAMPLE_GRID-1][EXAMPLE_GRID-1]
+		memory_grid = parse_grid(input, EXAMPLE_GRID_SIZE, 12)
+		target = memory_grid[EXAMPLE_GRID_SIZE-1][EXAMPLE_GRID_SIZE-1]
 	} else {
-		memory_grid = parse_grid(input, REAL_GRID, 1024)
-		target = memory_grid[REAL_GRID-1][REAL_GRID-1]
+		memory_grid = parse_grid(input, REAL_GRID_SIZE, 1024)
+		target = memory_grid[REAL_GRID_SIZE-1][REAL_GRID_SIZE-1]
 	}
 
 	start_tile := memory_grid[0][0]
@@ -80,12 +82,12 @@ part_2 :: proc(filename: string) -> (result: [2]int) {
 
 	if is_example {
 		corrupted_base=12
-		memory_grid = parse_grid(input, EXAMPLE_GRID, corrupted_base)
-		target = memory_grid[EXAMPLE_GRID-1][EXAMPLE_GRID-1]
+		memory_grid = parse_grid(input, EXAMPLE_GRID_SIZE, corrupted_base)
+		target = memory_grid[EXAMPLE_GRID_SIZE-1][EXAMPLE_GRID_SIZE-1]
 	} else {
 		corrupted_base=1024
-		memory_grid = parse_grid(input, REAL_GRID, corrupted_base)
-		target = memory_grid[REAL_GRID-1][REAL_GRID-1]
+		memory_grid = parse_grid(input, REAL_GRID_SIZE, corrupted_base)
+		target = memory_grid[REAL_GRID_SIZE-1][REAL_GRID_SIZE-1]
 	}
 
 	start_tile := memory_grid[0][0]
@@ -103,37 +105,41 @@ part_2 :: proc(filename: string) -> (result: [2]int) {
 
 	// remove from all possible trails to target the corruped bytes one by one in order
 	start_3 := time.now()
-	track := map[[2]int]bool{}
+	track : ba.Bit_Array
 	q: queue.Queue([2]int)
+	queue.reserve(&q, 1000)
 
-	for i in corrupted_base..<len(corruped_bytes) {
-		if _, found := walked_tiles[corruped_bytes[i]]; found {
+	#no_bounds_check for i in corrupted_base..<len(corruped_bytes) {
+		if found := corruped_bytes[i] in walked_tiles; found {
 			delete_key(&walked_tiles, corruped_bytes[i])
 		} else {
 			continue
 		}
 
 		queue.clear(&q)
-		clear(&track)
+		ba.clear(&track)
 		queue.push(&q, target.position)
 		
-		for queue.len(q) > 0 {
+		#no_bounds_check  for queue.len(q) > 0 {
 			cur := queue.pop_front(&q)
 			if n, ok := walked_tiles[cur]; ok {
 				for next in n {
-					if _, found := track[next]; !found {
-						track[next]=true
+					found := ba.get(&track, bu.encode(u16(next.x), u16(next.y), 0))
+					if !found {
+						ba.set(&track, bu.encode(u16(next.x), u16(next.y), 0))
 						queue.push(&q, next)
 					}
 				}
 			}
 		}
 
-		if _, found := track[start_tile.position]; !found {
+		found := ba.get(&track, bu.encode(u16(start_tile.position.x), u16(start_tile.position.y), 0))
+		if !found {
 			result = corruped_bytes[i]
 			break
 		}
 	}
+
 	elapsed_3 := time.since(start)
 	fmt.printf("time spent searching all paths: %fms\n", time.duration_milliseconds(elapsed_3))
 
@@ -235,7 +241,7 @@ print_grid :: proc(grid: [][]Tile) {
 get_neighbours :: proc(grid: [][]Tile, current: Tile) -> []Tile {
 	result := [dynamic]Tile{}
 
-	for dir in bu.Direction {
+	#no_bounds_check for dir in bu.Direction {
 		coord_dir := bu.Dir_Vec[dir]
 		new_coord := current.position + coord_dir
 		if new_coord.x >= 0 && new_coord.x < len(grid) && new_coord.y >= 0 && new_coord.y < len(grid) {
@@ -253,14 +259,13 @@ less :: proc(a, b: Tile) -> bool {
 	return a.cost < b.cost
 }
 
-find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walked_tiles: ^map[[2]int][dynamic][2]int, search_paths:bool = false) -> int {
+find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walked_tiles: ^map[[2]int][dynamic][2]int, search_paths:bool = false) -> int #no_bounds_check {
 	costs := map[[3]int]int{}
-	q: qu.Priority_Queue(Tile)
-	qu.init(&q, less, qu.default_swap_proc(Tile))
-	qu.push(&q, start)
+	q: sa.Small_Array(50, Tile)
+	sa.push(&q, start)
 
-	for qu.len(q) > 0 {
-		current := qu.pop(&q)
+	for sa.len(q) > 0 {
+		current := sa.pop_front(&q)
 
 		if current.position == target.position {
 			if search_paths {
@@ -280,7 +285,7 @@ find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walked_tiles: ^map
 					move_n := Tile{}
 					move_n = move
 					move_n.cost = current.cost + move.cost
-					qu.push(&q, move_n)
+					sa.push(&q, move_n)
 				}
 
 				if search_paths {
