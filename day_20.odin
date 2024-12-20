@@ -1,0 +1,333 @@
+package day_20
+
+import "aoc_search"
+import bu "bit_utils"
+import qu "core:container/queue"
+import "core:fmt"
+import "core:os"
+import "core:strconv"
+import "core:strings"
+import "core:time"
+
+EXAMPLE_PART_1 :: 0
+EXAMPLE_PART_2 :: 0
+
+RESULT_PART_1 :: 1263
+RESULT_PART_2 :: 957831
+
+
+TileType :: enum {
+	WALL,
+	EMPTY,
+	START,
+	TARGET,
+}
+
+Tile :: struct {
+	type:      TileType,
+	direction: bu.Direction,
+	cost:      int,
+	position:  [2]int,
+}
+
+main :: proc() {
+	fmt.println("Running day_20...")
+	test_part_1("day_20_example_input", EXAMPLE_PART_1)
+	test_part_2("day_20_example_input", EXAMPLE_PART_2)
+	test_part_1("day_20_input", RESULT_PART_1)
+	test_part_2("day_20_input", RESULT_PART_2)
+}
+
+part_1 :: proc(filename: string) -> (result: u64) {
+	start := time.now()
+	input := read_file(filename)
+
+	grid, start_tile, target := parse_grid(input)
+
+	walked_tiles_forward := map[[2]int]Tile{}
+	walked_tiles_backwards := map[[2]int]Tile{}
+
+	psicoseconds_1 := find_paths(grid, start_tile, target, &walked_tiles_forward)
+	psicoseconds_2 := find_paths(grid, target, start_tile, &walked_tiles_backwards)
+
+	result = u64(
+		get_cheating(grid, 100, psicoseconds_1, walked_tiles_forward, walked_tiles_backwards),
+	)
+
+	fmt.println("psicoseconds 1", psicoseconds_1)
+	fmt.println("count", result)
+
+	elapsed := time.since(start)
+
+	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
+	return
+}
+
+part_2 :: proc(filename: string) -> (result: u64) {
+	start := time.now()
+	input := read_file(filename)
+
+	grid, start_tile, target := parse_grid(input)
+	no_cheating_picoseconds, walked_tiles_forward := find_paths_v2(grid, start_tile, target)
+	_, walked_tiles_backwards := find_paths_v2(grid, target, start_tile)
+
+	result = u64(get_cheating_with_20_picosenconds(100, no_cheating_picoseconds, walked_tiles_forward, walked_tiles_backwards))
+
+	elapsed := time.since(start)
+
+	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
+	return
+}
+
+test_part_1 :: proc(input: string, expected_result: u64) {
+	part_1_result := part_1(input)
+	fmt.assertf(
+		part_1_result == expected_result,
+		"(%s): part 1 result was %d and expected was %d",
+		input,
+		part_1_result,
+		expected_result,
+	)
+	fmt.printf("(%s) part 1 result: %d\n", input, part_1_result)
+}
+
+test_part_2 :: proc(input: string, expected_result: u64) {
+	part_2_result := part_2(input)
+	fmt.assertf(
+		part_2_result == expected_result,
+		"(%s): part 2 result was %d and expected was %d",
+		input,
+		part_2_result,
+		expected_result,
+	)
+	fmt.printf("(%s) part 2 result: %d\n", input, part_2_result)
+}
+
+read_file :: proc(filename: string) -> string {
+	data, ok := os.read_entire_file(filename, context.temp_allocator)
+	if !ok {
+		panic("failed reading file")
+	}
+
+	return string(data)
+}
+
+parse_grid :: proc(input: string) -> (grid: [][]Tile, start: Tile, target: Tile) {
+	result := [dynamic][]Tile{}
+	lines := strings.split_lines(input)
+
+	for line, y in lines {
+		if line == "" {
+			continue
+		}
+		row := [dynamic]Tile{}
+		for x in 0 ..< len(line) {
+			tile := Tile{}
+			// first tile shouldn't have any cost
+			tile.cost = 1
+			tile.position = [2]int{y, x}
+			if line[x] == '#' {
+				tile.type = .WALL
+			} else if line[x] == '.' {
+				tile.type = .EMPTY
+			} else if line[x] == 'S' {
+				tile.type = .START
+				tile.cost = 0
+				start = tile
+			} else if line[x] == 'E' {
+				tile.type = .TARGET
+				target = tile
+			}
+			append(&row, tile)
+		}
+		append(&result, row[:])
+
+	}
+
+	grid = result[:]
+	return
+}
+
+print_grid :: proc(grid: [][]Tile) {
+	for y in 0 ..< len(grid) {
+		for x in 0 ..< len(grid[0]) {
+			tile := grid[y][x]
+			switch tile.type {
+			case .WALL:
+				fmt.print("#")
+			case .EMPTY:
+				fmt.print(".")
+			case .START:
+				fmt.print("S")
+			case .TARGET:
+				fmt.print("E")
+			}
+		}
+		fmt.println("")
+	}
+}
+
+find_paths :: proc(
+	grid: [][]Tile,
+	start: Tile,
+	target: Tile,
+	walked_tiles: ^map[[2]int]Tile,
+) -> int {
+	dists := map[[2]int]int{}
+	q: qu.Queue(Tile)
+	qu.push(&q, start)
+
+	for qu.len(q) > 0 {
+		current := qu.pop_front(&q)
+
+		if current.position == target.position {
+			return current.cost
+		} else {
+			for move in get_neighbours(grid, current) {
+				move_recorded_cost, ok := dists[[2]int{move.position.x, move.position.y}]
+				if !ok {
+					move_recorded_cost = max(int)
+				}
+
+				if current.cost + move.cost < move_recorded_cost {
+					dists[[2]int{move.position.x, move.position.y}] = current.cost + move.cost
+					move_n := Tile{}
+					move_n = move
+					move_n.cost = current.cost + move.cost
+
+					walked_tiles[move.position] = current
+
+					if move_n.type != .WALL {
+						qu.push(&q, move_n)
+					}
+				}
+			}
+		}
+	}
+	return -1
+}
+
+find_paths_v2 :: proc(grid: [][]Tile, start: Tile, target: Tile) -> (int, map[[2]int]int) {
+	costs := map[[2]int]int{}
+	q: qu.Queue(Tile)
+	qu.push(&q, start)
+
+	for qu.len(q) > 0 {
+		current := qu.pop_front(&q)
+
+		if current.position == target.position {
+			return current.cost, costs
+		} else {
+			for move in get_neighbours_no_walls(grid, current) {
+				move_recorded_cost, ok := costs[[2]int{move.position.x, move.position.y}]
+				if !ok {
+					move_recorded_cost = max(int)
+				}
+
+				if current.cost + move.cost < move_recorded_cost {
+					costs[[2]int{move.position.x, move.position.y}] = current.cost + move.cost
+					move_n := Tile{}
+					move_n = move
+					move_n.cost = current.cost + move.cost
+					qu.push(&q, move_n)
+				}
+			}
+		}
+	}
+	return -1, costs
+}
+
+get_neighbours :: proc(grid: [][]Tile, current: Tile) -> []Tile {
+	result := [dynamic]Tile{}
+
+	for dir in bu.Direction {
+		coord_dir := bu.Dir_Vec[dir]
+		new_coord := current.position + coord_dir
+		if new_coord.x >= 0 &&
+		   new_coord.x < len(grid) &&
+		   new_coord.y >= 0 &&
+		   new_coord.y < len(grid) {
+			tile := grid[new_coord.x][new_coord.y]
+			append(&result, tile)
+		}
+	}
+
+	return result[:]
+}
+
+
+get_neighbours_no_walls :: proc(grid: [][]Tile, current: Tile) -> []Tile {
+	result := [dynamic]Tile{}
+
+	for dir in bu.Direction {
+		coord_dir := bu.Dir_Vec[dir]
+		new_coord := current.position + coord_dir
+		if new_coord.x >= 0 &&
+		   new_coord.x < len(grid) &&
+		   new_coord.y >= 0 &&
+		   new_coord.y < len(grid) {
+			tile := grid[new_coord.x][new_coord.y]
+			if tile.type != .WALL {
+				append(&result, tile)
+			}
+		}
+	}
+
+	return result[:]
+}
+
+get_cheating :: proc(
+	grid: [][]Tile,
+	threshold: int,
+	psicoseconds: int,
+	walked_tiles_forward: map[[2]int]Tile,
+	walked_tiles_backwards: map[[2]int]Tile,
+) -> int {
+	count := 0
+	for y in 1 ..< len(grid) - 1 {
+		for x in 1 ..< len(grid[0]) - 1 {
+			current_pos := [2]int{y, x}
+			if grid[y][x].type == .WALL {
+				if current_pos in walked_tiles_forward && current_pos in walked_tiles_backwards {
+					if walked_tiles_forward[current_pos].cost +
+						   walked_tiles_backwards[current_pos].cost +
+						   1 <
+					   psicoseconds - 1 {
+						if psicoseconds -
+							   (walked_tiles_forward[current_pos].cost +
+									   walked_tiles_backwards[current_pos].cost +
+									   1) >=
+						   threshold {
+							count += 1
+						}
+					}
+				}
+			}
+		}
+	}
+	return count
+}
+
+get_cheating_with_20_picosenconds :: proc(
+	threshold: int,
+	no_cheating_picoseconds: int,
+	walked_tiles_forward: map[[2]int]int,
+	walked_tiles_backwards: map[[2]int]int,
+) -> int {
+	count := 0
+	for from_start in walked_tiles_forward {
+		for from_end in walked_tiles_backwards {
+			dist := manhatan_distance(from_start, from_end)
+			if dist <= 20 {
+				if walked_tiles_forward[from_start] - 1 + dist + walked_tiles_backwards[from_end] - 1 <= no_cheating_picoseconds - threshold {
+					count += 1
+				}
+			}
+		}
+	}
+	return count
+}
+
+manhatan_distance :: proc(a, b: [2]int) -> int {
+	return abs(a.x - b.x) + abs(a.y - b.y)
+}
