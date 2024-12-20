@@ -47,7 +47,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 	no_cheating_picoseconds, tiles_from_start := find_paths(grid, start_tile, target, false)
 	_, tiles_from_end := find_paths(grid, target, start_tile, false)
-
+	
 	fmt.println("tiles_from_start", tiles_from_start[start_tile.position])
 	fmt.println("tiles_from_end", tiles_from_end[start_tile.position])
 	fmt.println("no_cheating_picoseconds", no_cheating_picoseconds)
@@ -61,6 +61,23 @@ part_1 :: proc(filename: string) -> (result: u64) {
 			tiles_from_end,
 		),
 	)
+
+	
+	// // We could brute force for part 1
+	// for tiles in grid {
+	// 	for tile in tiles {
+	// 		if tile.type == .WALL {
+	// 			grid[tile.position.x][tile.position.y].type = .EMPTY
+	// 			picoseconds_spent, _ := find_paths(grid, start_tile, target, true)
+	// 			if picoseconds_spent <= no_cheating_picoseconds -  100 {
+	// 				result += 1
+	// 				fmt.println(result)
+	// 			}
+	// 			grid[tile.position.x][tile.position.y].type = .WALL
+	// 		}
+	// 	}
+	// 	free_all(context.temp_allocator)
+	// }
 
 	fmt.println("count", result)
 
@@ -83,6 +100,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	fmt.println("p2 tiles_from_end", tiles_from_end[start_tile.position])
 	fmt.println("p2 no_cheating_picoseconds", no_cheating_picoseconds)
 
+	// free_all(context.temp_allocator)
 
 	result = u64(
 		get_cheating_with_20_picosenconds(
@@ -189,10 +207,11 @@ print_grid :: proc(grid: [][]Tile) {
 }
 
 find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walls:bool) -> (int, map[[2]int]int) {
-	costs := map[[2]int]int{}
-	tracked_with_walls := map[[2]int]int{}
+	costs := make(map[[2]int]int, context.temp_allocator)
+	tracked_with_walls := make(map[[2]int]int, context.temp_allocator)
 
 	q: qu.Queue(Tile)
+	qu.init(&q, 16, context.temp_allocator)
 	qu.push(&q, start)
 
 	for qu.len(q) > 0 {
@@ -222,7 +241,7 @@ find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walls:bool) -> (in
 					}
 
 					if !walls {
-						tracked_with_walls[move_n.position] = current.cost + move.cost
+						tracked_with_walls[[2]int{move.position.x, move.position.y}] = current.cost + move.cost
 					}
 				}
 			}
@@ -232,7 +251,7 @@ find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walls:bool) -> (in
 }
 
 get_neighbours :: proc(grid: [][]Tile, current: Tile, walls: bool) -> []Tile {
-	result := [dynamic]Tile{}
+	result := make([dynamic]Tile, context.temp_allocator)
 
 	for dir in bu.Direction {
 		coord_dir := bu.Dir_Vec[dir]
@@ -264,10 +283,10 @@ get_cheating_2_picoseconds_fast :: proc(
 	count := 0
 	for y in 1 ..< len(grid) {
 		for x in 1 ..< len(grid[0]) {
-			if grid[y][x].type == .WALL {	
+			if grid[y][x].type == .WALL {
 				current_pos := [2]int{y, x}
 				if current_pos in tiles_from_start && current_pos in tiles_from_end {
-					if (tiles_from_start[current_pos] -1 + tiles_from_end[current_pos] - 1) <= picoseconds - threshold {
+					if (tiles_from_start[current_pos] - 1 + tiles_from_end[current_pos] - 1) <= picoseconds - threshold {
 						count += 1
 					}
 				}

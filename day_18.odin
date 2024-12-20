@@ -211,7 +211,7 @@ print_grid :: proc(grid: [][]Tile) {
 }
 
 get_neighbours :: proc(grid: [][]Tile, current: Tile) -> []Tile {
-	result := [dynamic]Tile{}
+	result := make([dynamic]Tile, context.temp_allocator)
 
 	for dir in bu.Direction {
 		coord_dir := bu.Dir_Vec[dir]
@@ -240,8 +240,9 @@ find_paths :: proc(
 	target: Tile,
 	walked_tiles: ^map[[2]int][dynamic][2]int,
 ) -> int #no_bounds_check {
-	costs := map[[3]int]int{}
+	costs := make(map[[3]int]int, context.temp_allocator)
 	q: queue.Queue(Tile)
+	queue.init(&q, 16, context.temp_allocator)
 	queue.push(&q, start)
 
 	for queue.len(q) > 0 {
