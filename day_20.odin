@@ -13,6 +13,7 @@ EXAMPLE_PART_1 :: 0
 EXAMPLE_PART_2 :: 0
 
 RESULT_PART_1 :: 1263
+// RESULT_PART_1 :: 0
 RESULT_PART_2 :: 957831
 
 
@@ -44,17 +45,23 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 	grid, start_tile, target := parse_grid(input)
 
-	walked_tiles_forward := map[[2]int]Tile{}
-	walked_tiles_backwards := map[[2]int]Tile{}
+	no_cheating_picoseconds, tiles_from_start := find_paths(grid, start_tile, target, false)
+	_, tiles_from_end := find_paths(grid, target, start_tile, false)
 
-	psicoseconds_1 := find_paths(grid, start_tile, target, &walked_tiles_forward)
-	psicoseconds_2 := find_paths(grid, target, start_tile, &walked_tiles_backwards)
+	fmt.println("tiles_from_start", tiles_from_start[start_tile.position])
+	fmt.println("tiles_from_end", tiles_from_end[start_tile.position])
+	fmt.println("no_cheating_picoseconds", no_cheating_picoseconds)
 
 	result = u64(
-		get_cheating(grid, 100, psicoseconds_1, walked_tiles_forward, walked_tiles_backwards),
+		get_cheating_2_picoseconds_fast(
+			grid,
+			100,
+			no_cheating_picoseconds,
+			tiles_from_start,
+			tiles_from_end,
+		),
 	)
 
-	fmt.println("psicoseconds 1", psicoseconds_1)
 	fmt.println("count", result)
 
 	elapsed := time.since(start)
@@ -68,10 +75,24 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	input := read_file(filename)
 
 	grid, start_tile, target := parse_grid(input)
-	no_cheating_picoseconds, walked_tiles_forward := find_paths_v2(grid, start_tile, target)
-	_, walked_tiles_backwards := find_paths_v2(grid, target, start_tile)
+	no_cheating_picoseconds, tiles_from_start := find_paths(grid, start_tile, target, true)
+	_, tiles_from_end := find_paths(grid, target, start_tile, true)
 
-	result = u64(get_cheating_with_20_picosenconds(100, no_cheating_picoseconds, walked_tiles_forward, walked_tiles_backwards))
+
+	fmt.println("p2 tiles_from_start", tiles_from_start[start_tile.position])
+	fmt.println("p2 tiles_from_end", tiles_from_end[start_tile.position])
+	fmt.println("p2 no_cheating_picoseconds", no_cheating_picoseconds)
+
+
+	result = u64(
+		get_cheating_with_20_picosenconds(
+			100,
+			no_cheating_picoseconds,
+			20,
+			tiles_from_start,
+			tiles_from_end,
+		),
+	)
 
 	elapsed := time.since(start)
 
@@ -167,48 +188,10 @@ print_grid :: proc(grid: [][]Tile) {
 	}
 }
 
-find_paths :: proc(
-	grid: [][]Tile,
-	start: Tile,
-	target: Tile,
-	walked_tiles: ^map[[2]int]Tile,
-) -> int {
-	dists := map[[2]int]int{}
-	q: qu.Queue(Tile)
-	qu.push(&q, start)
-
-	for qu.len(q) > 0 {
-		current := qu.pop_front(&q)
-
-		if current.position == target.position {
-			return current.cost
-		} else {
-			for move in get_neighbours(grid, current) {
-				move_recorded_cost, ok := dists[[2]int{move.position.x, move.position.y}]
-				if !ok {
-					move_recorded_cost = max(int)
-				}
-
-				if current.cost + move.cost < move_recorded_cost {
-					dists[[2]int{move.position.x, move.position.y}] = current.cost + move.cost
-					move_n := Tile{}
-					move_n = move
-					move_n.cost = current.cost + move.cost
-
-					walked_tiles[move.position] = current
-
-					if move_n.type != .WALL {
-						qu.push(&q, move_n)
-					}
-				}
-			}
-		}
-	}
-	return -1
-}
-
-find_paths_v2 :: proc(grid: [][]Tile, start: Tile, target: Tile) -> (int, map[[2]int]int) {
+find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walls:bool) -> (int, map[[2]int]int) {
 	costs := map[[2]int]int{}
+	tracked_with_walls := map[[2]int]int{}
+
 	q: qu.Queue(Tile)
 	qu.push(&q, start)
 
@@ -216,9 +199,13 @@ find_paths_v2 :: proc(grid: [][]Tile, start: Tile, target: Tile) -> (int, map[[2
 		current := qu.pop_front(&q)
 
 		if current.position == target.position {
-			return current.cost, costs
+			if walls {
+				return current.cost, costs
+			} else {
+				return current.cost, tracked_with_walls
+			}
 		} else {
-			for move in get_neighbours_no_walls(grid, current) {
+			for move in get_neighbours(grid, current, walls) {
 				move_recorded_cost, ok := costs[[2]int{move.position.x, move.position.y}]
 				if !ok {
 					move_recorded_cost = max(int)
@@ -229,7 +216,14 @@ find_paths_v2 :: proc(grid: [][]Tile, start: Tile, target: Tile) -> (int, map[[2
 					move_n := Tile{}
 					move_n = move
 					move_n.cost = current.cost + move.cost
-					qu.push(&q, move_n)
+
+					if move_n.type != .WALL {
+						qu.push(&q, move_n)
+					}
+
+					if !walls {
+						tracked_with_walls[move_n.position] = current.cost + move.cost
+					}
 				}
 			}
 		}
@@ -237,7 +231,7 @@ find_paths_v2 :: proc(grid: [][]Tile, start: Tile, target: Tile) -> (int, map[[2
 	return -1, costs
 }
 
-get_neighbours :: proc(grid: [][]Tile, current: Tile) -> []Tile {
+get_neighbours :: proc(grid: [][]Tile, current: Tile, walls: bool) -> []Tile {
 	result := [dynamic]Tile{}
 
 	for dir in bu.Direction {
@@ -248,26 +242,7 @@ get_neighbours :: proc(grid: [][]Tile, current: Tile) -> []Tile {
 		   new_coord.y >= 0 &&
 		   new_coord.y < len(grid) {
 			tile := grid[new_coord.x][new_coord.y]
-			append(&result, tile)
-		}
-	}
-
-	return result[:]
-}
-
-
-get_neighbours_no_walls :: proc(grid: [][]Tile, current: Tile) -> []Tile {
-	result := [dynamic]Tile{}
-
-	for dir in bu.Direction {
-		coord_dir := bu.Dir_Vec[dir]
-		new_coord := current.position + coord_dir
-		if new_coord.x >= 0 &&
-		   new_coord.x < len(grid) &&
-		   new_coord.y >= 0 &&
-		   new_coord.y < len(grid) {
-			tile := grid[new_coord.x][new_coord.y]
-			if tile.type != .WALL {
+			if !walls || (walls && tile.type != .WALL) {
 				append(&result, tile)
 			}
 		}
@@ -276,30 +251,24 @@ get_neighbours_no_walls :: proc(grid: [][]Tile, current: Tile) -> []Tile {
 	return result[:]
 }
 
-get_cheating :: proc(
+// We can do it this way because the "cheated" Tiles are always next to the current tile in the path
+// this way we can get the distance from the adyacent wall to the target and then addit to the cost/tiles so far
+// sadly this approach wasn't usefull for part two where I have to find all the tiles whithin 20 tiles of distance and then get the sum of both.
+get_cheating_2_picoseconds_fast :: proc(
 	grid: [][]Tile,
 	threshold: int,
-	psicoseconds: int,
-	walked_tiles_forward: map[[2]int]Tile,
-	walked_tiles_backwards: map[[2]int]Tile,
+	picoseconds: int,
+	tiles_from_start: map[[2]int]int,
+	tiles_from_end: map[[2]int]int,
 ) -> int {
 	count := 0
-	for y in 1 ..< len(grid) - 1 {
-		for x in 1 ..< len(grid[0]) - 1 {
-			current_pos := [2]int{y, x}
-			if grid[y][x].type == .WALL {
-				if current_pos in walked_tiles_forward && current_pos in walked_tiles_backwards {
-					if walked_tiles_forward[current_pos].cost +
-						   walked_tiles_backwards[current_pos].cost +
-						   1 <
-					   psicoseconds - 1 {
-						if psicoseconds -
-							   (walked_tiles_forward[current_pos].cost +
-									   walked_tiles_backwards[current_pos].cost +
-									   1) >=
-						   threshold {
-							count += 1
-						}
+	for y in 1 ..< len(grid) {
+		for x in 1 ..< len(grid[0]) {
+			if grid[y][x].type == .WALL {	
+				current_pos := [2]int{y, x}
+				if current_pos in tiles_from_start && current_pos in tiles_from_end {
+					if (tiles_from_start[current_pos] -1 + tiles_from_end[current_pos] - 1) <= picoseconds - threshold {
+						count += 1
 					}
 				}
 			}
@@ -308,18 +277,20 @@ get_cheating :: proc(
 	return count
 }
 
+// Sadly, the approach used for part one was not working in part two because of the distance, so I wrote this version which can be used for part 1 and 2, but it will be significantly slower.
 get_cheating_with_20_picosenconds :: proc(
 	threshold: int,
 	no_cheating_picoseconds: int,
-	walked_tiles_forward: map[[2]int]int,
-	walked_tiles_backwards: map[[2]int]int,
+	picoseconds_cheat: int,
+	tiles_from_start: map[[2]int]int,
+	tiles_from_end: map[[2]int]int,
 ) -> int {
 	count := 0
-	for from_start in walked_tiles_forward {
-		for from_end in walked_tiles_backwards {
+	for from_start in tiles_from_start {
+		for from_end in tiles_from_end {
 			dist := manhatan_distance(from_start, from_end)
-			if dist <= 20 {
-				if walked_tiles_forward[from_start] - 1 + dist + walked_tiles_backwards[from_end] - 1 <= no_cheating_picoseconds - threshold {
+			if dist <= picoseconds_cheat {
+				if tiles_from_start[from_start] - 1 + dist + tiles_from_end[from_end] - 1 <= no_cheating_picoseconds - threshold {
 					count += 1
 				}
 			}
