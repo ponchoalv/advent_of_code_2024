@@ -124,7 +124,7 @@ get_plot_map_price :: proc(input: string, with_bulk_discount: bool = false) -> (
 				),
 			) {
 				result += get_price(
-					get_plot_area(plot_map[:], current_plot, &grouped_plots),
+					get_plot_area_r(plot_map[:], current_plot, &grouped_plots),
 					with_bulk_discount,
 				)
 			}
@@ -134,94 +134,94 @@ get_plot_map_price :: proc(input: string, with_bulk_discount: bool = false) -> (
 }
 
 get_perimiter :: proc(plot_area: PlotArea) -> (perimiter: u64) {
-		track_top := map[[2]i16]bool{}
-		track_bottom := map[[2]i16]bool{}
-		track_left := map[[2]i16]bool{}
-		track_right := map[[2]i16]bool{}
-		track_tl := map[[2]i16]bool{}
-		track_tr := map[[2]i16]bool{}
-		track_bu := map[[2]i16]bool{}
-		track_fu := map[[2]i16]bool{}
+	track_top := map[[2]i16]bool{}
+	track_bottom := map[[2]i16]bool{}
+	track_left := map[[2]i16]bool{}
+	track_right := map[[2]i16]bool{}
+	track_tl := map[[2]i16]bool{}
+	track_tr := map[[2]i16]bool{}
+	track_bu := map[[2]i16]bool{}
+	track_fu := map[[2]i16]bool{}
 
-		for plot in plot_area.plots {
-			for edge in plot.edges {
-				switch edge {
-				case .TOP:
-					track_top[plot.position]=true
-				case .BOTTOM:
-					track_bottom[plot.position]=true
-				case .LEFT:
-					track_left[plot.position]=true
-				case .RIGHT:
-					track_right[plot.position]=true
-				}
+	for plot in plot_area.plots {
+		for edge in plot.edges {
+			switch edge {
+			case .TOP:
+				track_top[plot.position] = true
+			case .BOTTOM:
+				track_bottom[plot.position] = true
+			case .LEFT:
+				track_left[plot.position] = true
+			case .RIGHT:
+				track_right[plot.position] = true
 			}
 		}
-		
-		for k in track_top {
-			// if is in top and left is an outer corner
-			if _, ok := track_left[k]; ok {
-				track_tl[k] = true
-				perimiter += 1
-			}
+	}
 
-			// if is in top and rigt is an outer corner
-			if _, ok := track_right[k]; ok {
-				track_tr[k] = true
-				perimiter += 1
-			}
+	for k in track_top {
+		// if is in top and left is an outer corner
+		if _, ok := track_left[k]; ok {
+			track_tl[k] = true
+			perimiter += 1
+		}
 
-			moved_back_up := k + [2]i16{-1,-1}
-			// if is in right and moved_back_up is an inner corner
-			if _, ok := track_right[moved_back_up]; ok {
-				track_bu[moved_back_up] = true
-				perimiter += 1
-			}
+		// if is in top and rigt is an outer corner
+		if _, ok := track_right[k]; ok {
+			track_tr[k] = true
+			perimiter += 1
+		}
 
-			moved_front_up := k + [2]i16{-1,1}
-			// if is in top and moved_front_up is an inner corner
-			if _, ok := track_left[moved_front_up]; ok {
-				track_fu[moved_front_up]=true
+		moved_back_up := k + [2]i16{-1, -1}
+		// if is in right and moved_back_up is an inner corner
+		if _, ok := track_right[moved_back_up]; ok {
+			track_bu[moved_back_up] = true
+			perimiter += 1
+		}
+
+		moved_front_up := k + [2]i16{-1, 1}
+		// if is in top and moved_front_up is an inner corner
+		if _, ok := track_left[moved_front_up]; ok {
+			track_fu[moved_front_up] = true
+			perimiter += 1
+		}
+	}
+
+	for k in track_bottom {
+		// if is in bottom and left is an outer corner
+		if _, ok := track_left[k]; ok {
+			// do not double count simtrical intersection from front up diagonal
+			if _, found := track_fu[k]; !found {
 				perimiter += 1
 			}
 		}
 
-		for k in track_bottom {
-			// if is in bottom and left is an outer corner
-			if _, ok := track_left[k]; ok {
-				// do not double count simtrical intersection from front up diagonal
-				if _, found := track_fu[k]; !found {
-					perimiter += 1
-				}
+		// if is in bottom and rigt is an outer corner
+		if _, ok := track_right[k]; ok {
+			// do not double count simtrical intersection from back up diagonal
+			if _, found := track_bu[k]; !found {
+				perimiter += 1
 			}
+		}
 
-			// if is in bottom and rigt is an outer corner
-			if _, ok := track_right[k]; ok {
-				// do not double count simtrical intersection from back up diagonal
-				if _, found := track_bu[k]; !found {
-					perimiter += 1
-				}
-			}
-
-			moved_back_bottom := k + [2]i16{1,-1}
-			// if is in right and moved_back_bottom is an inner corner
-			if _, ok := track_right[moved_back_bottom]; ok {
-				// do not double count simtrical intersection from top right
-				if _, found := track_tr[moved_back_bottom]; !found {
-					perimiter += 1
-				}
-			}
-
-			moved_front_bottom := k + [2]i16{1,1}
+		moved_back_bottom := k + [2]i16{1, -1}
+		// if is in right and moved_back_bottom is an inner corner
+		if _, ok := track_right[moved_back_bottom]; ok {
 			// do not double count simtrical intersection from top right
-			if _, ok := track_left[moved_front_bottom]; ok {
-				if _, found := track_tl[moved_front_bottom]; !found {
-					perimiter += 1
-				}
+			if _, found := track_tr[moved_back_bottom]; !found {
+				perimiter += 1
 			}
 		}
 
-		return
+		moved_front_bottom := k + [2]i16{1, 1}
+		// do not double count simtrical intersection from top right
+		if _, ok := track_left[moved_front_bottom]; ok {
+			if _, found := track_tl[moved_front_bottom]; !found {
+				perimiter += 1
+			}
+		}
+	}
+
+	return
 }
 
 get_price :: proc(plot_area: PlotArea, with_bulk_discount: bool = false) -> u64 {
@@ -331,9 +331,75 @@ get_plot_area :: proc(
 	}
 
 	result.plot_type = plot.plot_type
-	// slice.stable_sort_by(plots[:], plots_sort_y)
-	// fmt.println(plots[:])
 	result.plots = plots[:]
-	// fmt.println(result, get_price(result))
+
 	return
+}
+
+get_plot_area_recursive :: proc(
+    plot_map: [][]Plot,
+    plot: Plot,
+    clustered_plots: ^bit_array.Bit_Array,
+    plots: ^[dynamic]Plot,
+) {
+    // Check if this plot was already processed
+    coord_was_set := bit_array.get(
+        clustered_plots,
+        bit_utils.encode(
+            u16(plot.position.x),
+            u16(plot.position.y),
+            plot.plot_type,
+        ),
+    )
+    if coord_was_set {
+        return
+    }
+
+    // Mark this plot as processed
+    bit_array.set(
+        clustered_plots,
+        bit_utils.encode(
+            u16(plot.position.x),
+            u16(plot.position.y),
+            plot.plot_type,
+        ),
+        true,
+    )
+
+    // Get neighbours and update plot data
+    temp_plot := plot
+    neighbours, edges := get_neighbours(plot_map, temp_plot)
+    temp_plot.neighbours = u8(len(neighbours))
+    temp_plot.edges = edges
+
+    // Add plot to result
+    append(plots, temp_plot)
+
+    // Recursively process neighbours
+    for pos in neighbours {
+        plot_at_pos := plot_map[pos.x][pos.y]
+        coord_was_set := bit_array.get(
+            clustered_plots,
+            bit_utils.encode(u16(pos.x), u16(pos.y), plot_at_pos.plot_type),
+        )
+        if !coord_was_set {
+            get_plot_area_recursive(plot_map, plot_at_pos, clustered_plots, plots)
+        }
+    }
+}
+
+// Wrapper procedure to maintain the same interface
+get_plot_area_r :: proc(
+    plot_map: [][]Plot,
+    plot: Plot,
+    clustered_plots: ^bit_array.Bit_Array,
+) -> (
+    result: PlotArea,
+) {
+    plots := make([dynamic]Plot)
+    get_plot_area_recursive(plot_map, plot, clustered_plots, &plots)
+    
+    result.plot_type = plot.plot_type
+    result.plots = plots[:]
+    return
 }
