@@ -62,23 +62,6 @@ part_1 :: proc(filename: string) -> (result: u64) {
 		),
 	)
 
-	
-	// // We could brute force for part 1
-	// for tiles in grid {
-	// 	for tile in tiles {
-	// 		if tile.type == .WALL {
-	// 			grid[tile.position.x][tile.position.y].type = .EMPTY
-	// 			picoseconds_spent, _ := find_paths(grid, start_tile, target, true)
-	// 			if picoseconds_spent <= no_cheating_picoseconds -  100 {
-	// 				result += 1
-	// 				fmt.println(result)
-	// 			}
-	// 			grid[tile.position.x][tile.position.y].type = .WALL
-	// 		}
-	// 	}
-	// 	free_all(context.temp_allocator)
-	// }
-
 	fmt.println("count", result)
 
 	elapsed := time.since(start)
@@ -92,15 +75,11 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	input := read_file(filename)
 
 	grid, start_tile, target := parse_grid(input)
-	no_cheating_picoseconds, tiles_from_start := find_paths(grid, start_tile, target, true)
-	_, tiles_from_end := find_paths(grid, target, start_tile, true)
-
+	tiles_from_start := map[[2]int]int{}
+	no_cheating_picoseconds := find_recursive(grid, start_tile, target, 0, &tiles_from_start)
 
 	fmt.println("p2 tiles_from_start", tiles_from_start[start_tile.position])
-	fmt.println("p2 tiles_from_end", tiles_from_end[start_tile.position])
 	fmt.println("p2 no_cheating_picoseconds", no_cheating_picoseconds)
-
-	// free_all(context.temp_allocator)
 
 	result = u64(
 		get_cheating_with_20_picosenconds(
@@ -108,7 +87,6 @@ part_2 :: proc(filename: string) -> (result: u64) {
 			no_cheating_picoseconds,
 			20,
 			tiles_from_start,
-			tiles_from_end,
 		),
 	)
 
@@ -204,6 +182,28 @@ print_grid :: proc(grid: [][]Tile) {
 		}
 		fmt.println("")
 	}
+}
+
+// the search can be done simply by a recursive function
+find_recursive :: proc(grid: [][]Tile, current: Tile, target: Tile, cost:int, visited: ^map[[2]int]int) -> int {
+	if current.position in visited {
+		return cost
+	}
+
+	visited[current.position] = cost
+
+	if current.position == target.position {
+		return cost
+	} else {
+		for move in get_neighbours(grid, current, true) {
+			if move.position in visited {
+				continue
+			}
+			return find_recursive(grid, move, target, cost+1, visited)
+		}
+	}
+
+	return cost
 }
 
 find_paths :: proc(grid: [][]Tile, start: Tile, target: Tile, walls:bool) -> (int, map[[2]int]int) {
@@ -302,14 +302,13 @@ get_cheating_with_20_picosenconds :: proc(
 	no_cheating_picoseconds: int,
 	picoseconds_cheat: int,
 	tiles_from_start: map[[2]int]int,
-	tiles_from_end: map[[2]int]int,
 ) -> int {
 	count := 0
 	for from_start in tiles_from_start {
-		for from_end in tiles_from_end {
+		for from_end in tiles_from_start {
 			dist := manhatan_distance(from_start, from_end)
 			if dist <= picoseconds_cheat {
-				if tiles_from_start[from_start] - 1 + dist + tiles_from_end[from_end] - 1 <= no_cheating_picoseconds - threshold {
+				if tiles_from_start[from_start] + dist + (no_cheating_picoseconds - tiles_from_start[from_end]) <= no_cheating_picoseconds - threshold {
 					count += 1
 				}
 			}
