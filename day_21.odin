@@ -15,13 +15,15 @@ import "core:time"
 import "core:unicode/utf8"
 
 EXAMPLE_PART_1 :: 126384
-EXAMPLE_PART_2 :: 2536798
+EXAMPLE_PART_2 :: 2965114
 
 RESULT_PART_1 :: 174124
-RESULT_PART_2 :: 3197436
-// 3197436
+RESULT_PART_2 :: 2769354
 // 2025830
-
+// 3197436
+// 11664556
+// 1034210004
+// 4870032
 NUM_PAD := [][]rune {
 	[]rune{'7', '8', '9'},
 	[]rune{'4', '5', '6'},
@@ -29,9 +31,7 @@ NUM_PAD := [][]rune {
 	[]rune{'#', '0', 'A'},
 }
 
-DIR_PAD := [][]rune{
-	[]rune{'#', '^', 'A'}, 
-	[]rune{'<', 'v', '>'}}
+DIR_PAD := [][]rune{[]rune{'#', '^', 'A'}, []rune{'<', 'v', '>'}}
 
 Move :: struct {
 	position: [2]int,
@@ -47,6 +47,8 @@ Direction_Move_Vector :: [bu.Direction]rune {
 }
 
 Dir_Move := Direction_Move_Vector
+memo := map[string]u64{}
+
 
 main :: proc() {
 	fmt.println("Running day_21...")
@@ -61,14 +63,23 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	input := read_file(filename)
 	fmt.println(input)
 
-	num_pad_moves := pre_calculate_pad_moves(NUM_PAD)
-	fmt.println(num_pad_moves)
+	pre_calculated_moves := map[[2]rune][]string{}
+	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
+	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
 
-	dir_pad_moves := pre_calculate_pad_moves(DIR_PAD)
-	fmt.println(dir_pad_moves)
+	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
 
-	dir_pad_length := pre_calculate_pad_moves_length(dir_pad_moves)
-	fmt.println(dir_pad_length)
+	fmt.println(pre_calculate_length)
+	fmt.println(pre_calculated_moves)
+
+	// num_pad_moves := pre_calculate_pad_moves(NUM_PAD)
+	// fmt.println(num_pad_moves)
+
+	// dir_pad_moves := pre_calculate_pad_moves(DIR_PAD)
+	// fmt.println(dir_pad_moves)
+
+	// pre_calculate_length := pre_calculate_pad_moves_length(dir_pad_moves)
+	// fmt.println(pre_calculate_length)
 
 	lines := strings.split_lines(input)
 
@@ -77,32 +88,38 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 		numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
 
+		// code_with_a, _ := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(code)})
+		// zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
 
-		first_robot_movements := get_movements_for_first_robot(code, num_pad_moves)
+		// best: u64 = max(u64)
+		// length: u64 = 0
+		// for pair in zipped_combs {
+		// 	length += r_2_r_movements_count(
+		// 		{pair.x, pair.y},
+		// 		pre_calculated_moves,
+		// 		pre_calculate_length,
+		// 		3,
+		// 		&memo,
+		// 	)
+		// }
 
-		best: u64 = max(u64)
 
-		for moves in first_robot_movements {
-			code_with_a, _ := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(moves)})
-			zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
+		fmt.println(r_2_r_movements_count_2(code,pre_calculated_moves,pre_calculate_length, 3,&memo))
 
-			length: u64= 0
-			
-			for pair in zipped_combs {
-				memo := map[[2]rune]u64{}
-				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, dir_pad_length, 2, &memo)
-			}
-			best = min(best,length)
-		}
 
-		fmt.println(best)
+
+
+		// fmt.print(length, " ")
+		// best = min(best, length)
+
+		// fmt.println(best)
 
 
 		// tengo que hacer esto de forma recursiva y con memoization
 		// first_robot := get_movements_second_robot(first_robot_movements, dir_pad_moves)
 		// second_robot := get_movements_second_robot(first_robot, dir_pad_moves)
 
-		result += best * numeric_code
+		// result += best * numeric_code
 		fmt.println(result)
 
 		// free_all(context.temp_allocator)
@@ -125,35 +142,53 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	fmt.println(input)
 
 	lines := strings.split_lines(input)
-	num_pad_moves := pre_calculate_pad_moves(NUM_PAD)
-	dir_pad_moves := pre_calculate_pad_moves(DIR_PAD)
-	dir_pad_length := pre_calculate_pad_moves_length(dir_pad_moves)
 
-	for code in lines {
-		if code == "" {continue}
+	pre_calculated_moves := map[[2]rune][]string{}
+	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
+	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
 
-		numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
+	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
 
-		first_robot_movements := get_movements_for_first_robot(code, num_pad_moves)
+	fmt.println(pre_calculate_length)
+	fmt.println(pre_calculated_moves)
 
-		best: u64 = max(u64)
 
-		for moves in first_robot_movements {
-			code_with_a, _ := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(moves)})
-			zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
+	// for code in lines {
+	// 	if code == "" {continue}
 
-			length: u64= 0
-			for pair in zipped_combs {
-				memo := map[[2]rune]u64{}
-				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves,dir_pad_length, 25, &memo)
-			}
-			best = min(best,length)
-		}
+	// 	numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
 
-		fmt.println(best, numeric_code, result)
+	// 	code_with_a, _ := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(code)})
+	// 	zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
 
-		result += (best * numeric_code)
-	}
+	// 	best: u64 = max(u64)
+	// 	length: u64 = 0
+	// 	for pair in zipped_combs {
+	// 		// memo := map[[2]rune]u64{}
+	// 		length += r_2_r_movements_count(
+	// 			{pair.x, pair.y},
+	// 			pre_calculated_moves,
+	// 			pre_calculate_length,
+	// 			1 + 25,
+	// 			&memo,
+	// 		)
+	// 	}
+
+	// 	fmt.print(length, " ")
+	// 	best = min(best, length)
+
+	// 	fmt.println(best)
+
+
+	// 	// tengo que hacer esto de forma recursiva y con memoization
+	// 	// first_robot := get_movements_second_robot(first_robot_movements, dir_pad_moves)
+	// 	// second_robot := get_movements_second_robot(first_robot, dir_pad_moves)
+
+	// 	result += best * numeric_code
+	// 	fmt.println(result)
+
+	// 	// free_all(context.temp_allocator)
+	// }
 
 	elapsed := time.since(start)
 	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
@@ -224,7 +259,6 @@ find_paths :: proc(pad: [][]rune, from, to: [2]int) -> []string {
 
 	q: queue.Queue(Move)
 	result := make([dynamic]string)
-	optimal_len := max(int)
 
 	queue.push_back(&q, Move{position = from})
 
@@ -234,6 +268,7 @@ find_paths :: proc(pad: [][]rune, from, to: [2]int) -> []string {
 		if cur.position == to {
 			new_buf, _ := slice.concatenate([][]rune{cur.buff, []rune{'A'}})
 			append(&result, utf8.runes_to_string(new_buf))
+			continue
 		}
 
 		for move in get_neighbours(pad, cur.position) {
@@ -252,7 +287,7 @@ find_paths :: proc(pad: [][]rune, from, to: [2]int) -> []string {
 	return result[:]
 }
 
-pre_calculate_pad_moves :: proc(pad: [][]rune) -> (result: map[[2]rune][]string) {
+pre_calculate_pad_moves :: proc(pad: [][]rune, result: ^map[[2]rune][]string) {
 	for r in 0 ..< len(pad) {
 		for c in 0 ..< len(pad[0]) {
 			for r1 in 0 ..< len(pad) {
@@ -268,9 +303,15 @@ pre_calculate_pad_moves :: proc(pad: [][]rune) -> (result: map[[2]rune][]string)
 }
 
 
-pre_calculate_pad_moves_length :: proc(pre_calc_moves: map[[2]rune][]string) -> (result: map[[2]rune]u64) {
+pre_calculate_pad_moves_length :: proc(
+	pre_calc_moves: map[[2]rune][]string,
+) -> (
+	result: map[[2]rune]u64,
+) {
 	for k, v in pre_calc_moves {
-		result[k]=u64(len(v[0]))
+		if len(v) > 0 {
+			result[k] = u64(len(v[0]))
+		}
 	}
 
 	return
@@ -319,25 +360,26 @@ get_movements_second_robot :: proc(
 	return filtered
 }
 
-r_r_movements_length :: proc(
+r_2_r_movements_count :: proc(
 	pair: [2]rune,
 	dir_pad_moves: map[[2]rune][]string,
-	dir_pad_length: map[[2]rune]u64,
+	pre_calculate_length: map[[2]rune]u64,
 	depth: int,
 	memo: ^map[[2]rune]u64,
 ) -> u64 {
-	if pair in memo {
-		return memo[pair]
+	if depth == 1 {
+		return u64(len(dir_pad_moves[pair][0]))
 	}
 
-	if depth == 1 {
-		return dir_pad_length[pair]
+	if pair in memo {
+		return memo[pair]
 	}
 
 	best: u64 = max(u64)
 
 	for xs in dir_pad_moves[pair] {
 		result: u64 = 0
+
 		code_with_a, err := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(xs)})
 		if err != nil {
 			panic("something happened")
@@ -345,8 +387,14 @@ r_r_movements_length :: proc(
 
 		zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
 
-		for pair in zipped_combs {
-			result += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, dir_pad_length, depth - 1, memo)
+		for pp in zipped_combs {
+			result += r_2_r_movements_count(
+				{pp.x, pp.y},
+				dir_pad_moves,
+				pre_calculate_length,
+				depth - 1,
+				memo,
+			)
 		}
 
 		best = min(best, result)
@@ -357,6 +405,59 @@ r_r_movements_length :: proc(
 	return memo[pair]
 }
 
+
+r_2_r_movements_count_2 :: proc(
+	code_seq: string,
+	dir_pad_moves: map[[2]rune][]string,
+	pre_calculate_length: map[[3]rune]u64,
+	depth: int,
+	memo: ^map[string]u64,
+) -> u64 {
+	
+	if depth == 1 {
+		code_with_a, err := slice.concatenate(
+			[][]rune{[]rune{'A'}, utf8.string_to_runes(code_seq)},
+		)
+		if err != nil {
+			panic("something happened")
+		}
+
+		zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
+		result: u64= 0
+
+		for pp in zipped_combs {
+			result += pre_calculate_length[{pp.x, pp.y}]
+		}
+
+		return result
+	}
+
+	if code_seq in memo {
+		return memo[code_seq]
+	}
+
+
+	code_with_a, err := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(code_seq)})
+	if err != nil {
+		panic("something happened")
+	}
+
+	zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
+
+	
+	for pp in zipped_combs {
+		result:u64=0
+		for sub_seq in dir_pad_moves[{pp.x, pp.y}] {
+			vvv := r_2_r_movements_count_2( sub_seq, dir_pad_moves, pre_calculate_length, depth - 1, memo)
+			fmt.println(code_seq, vvv)
+			result += r_2_r_movements_count_2( sub_seq, dir_pad_moves, pre_calculate_length, depth - 1, memo)
+		}
+	}
+
+	memo[code_seq] = result
+
+	return memo[code_seq]
+}
 
 get_shortest_string_size :: proc(list: []string) -> int {
 	min := max(int)
