@@ -29,7 +29,9 @@ NUM_PAD := [][]rune {
 	[]rune{'#', '0', 'A'},
 }
 
-DIR_PAD := [][]rune{[]rune{'#', '^', 'A'}, []rune{'<', 'v', '>'}}
+DIR_PAD := [][]rune{
+	[]rune{'#', '^', 'A'}, 
+	[]rune{'<', 'v', '>'}}
 
 Move :: struct {
 	position: [2]int,
@@ -60,29 +62,15 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	fmt.println(input)
 
 	num_pad_moves := pre_calculate_pad_moves(NUM_PAD)
+	fmt.println(num_pad_moves)
+
 	dir_pad_moves := pre_calculate_pad_moves(DIR_PAD)
+	fmt.println(dir_pad_moves)
+
+	dir_pad_length := pre_calculate_pad_moves_length(dir_pad_moves)
+	fmt.println(dir_pad_length)
 
 	lines := strings.split_lines(input)
-
-	// allocator := context.allocator
-	// context.allocator = context.temp_allocator
-
-	// for code in lines {
-	// 	if code == "" {continue}
-
-	// 	numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
-
-
-	// 	first_robot_movements := get_movements_for_first_robot(code, num_pad_moves)
-	// 	first_robot := get_movements_second_robot(first_robot_movements, dir_pad_moves)
-	// 	second_robot := get_movements_second_robot(first_robot, dir_pad_moves)
-
-	// 	result += u64(len(second_robot[0])) * numeric_code
-	// 	fmt.println(result)
-
-	// 	free_all(context.temp_allocator)
-	// 	// free_all(context.allocator)
-	// }
 
 	for code in lines {
 		if code == "" {continue}
@@ -102,7 +90,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 			
 			for pair in zipped_combs {
 				memo := map[[2]rune]u64{}
-				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, 2, &memo)
+				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, dir_pad_length, 2, &memo)
 			}
 			best = min(best,length)
 		}
@@ -139,6 +127,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	lines := strings.split_lines(input)
 	num_pad_moves := pre_calculate_pad_moves(NUM_PAD)
 	dir_pad_moves := pre_calculate_pad_moves(DIR_PAD)
+	dir_pad_length := pre_calculate_pad_moves_length(dir_pad_moves)
 
 	for code in lines {
 		if code == "" {continue}
@@ -156,15 +145,14 @@ part_2 :: proc(filename: string) -> (result: u64) {
 			length: u64= 0
 			for pair in zipped_combs {
 				memo := map[[2]rune]u64{}
-				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, 25, &memo)
+				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves,dir_pad_length, 25, &memo)
 			}
 			best = min(best,length)
 		}
 
-		fmt.println(best)
+		fmt.println(best, numeric_code, result)
 
-		result += best * numeric_code
-		fmt.println(result)
+		result += (best * numeric_code)
 	}
 
 	elapsed := time.since(start)
@@ -269,11 +257,22 @@ pre_calculate_pad_moves :: proc(pad: [][]rune) -> (result: map[[2]rune][]string)
 		for c in 0 ..< len(pad[0]) {
 			for r1 in 0 ..< len(pad) {
 				for c1 in 0 ..< len(pad[0]) {
-					result[{pad[r][c], pad[r1][c1]}] = find_paths(pad, {r, c}, {r1, c1})
+					if pad[r][c] != '#' && pad[r1][c1] != '#' {
+						result[{pad[r][c], pad[r1][c1]}] = find_paths(pad, {r, c}, {r1, c1})
+					}
 				}
 			}
 		}
 	}
+	return
+}
+
+
+pre_calculate_pad_moves_length :: proc(pre_calc_moves: map[[2]rune][]string) -> (result: map[[2]rune]u64) {
+	for k, v in pre_calc_moves {
+		result[k]=u64(len(v[0]))
+	}
+
 	return
 }
 
@@ -323,6 +322,7 @@ get_movements_second_robot :: proc(
 r_r_movements_length :: proc(
 	pair: [2]rune,
 	dir_pad_moves: map[[2]rune][]string,
+	dir_pad_length: map[[2]rune]u64,
 	depth: int,
 	memo: ^map[[2]rune]u64,
 ) -> u64 {
@@ -331,7 +331,7 @@ r_r_movements_length :: proc(
 	}
 
 	if depth == 1 {
-		return u64(len(dir_pad_moves[pair][0]))
+		return dir_pad_length[pair]
 	}
 
 	best: u64 = max(u64)
@@ -342,11 +342,11 @@ r_r_movements_length :: proc(
 		if err != nil {
 			panic("something happened")
 		}
-		
+
 		zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
 
 		for pair in zipped_combs {
-			result += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, depth - 1, memo)
+			result += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, dir_pad_length, depth - 1, memo)
 		}
 
 		best = min(best, result)
