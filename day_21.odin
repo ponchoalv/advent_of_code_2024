@@ -15,10 +15,10 @@ import "core:time"
 import "core:unicode/utf8"
 
 EXAMPLE_PART_1 :: 126384
-EXAMPLE_PART_2 :: 2536798
+EXAMPLE_PART_2 :: 154115708116294
 
 RESULT_PART_1 :: 174124
-RESULT_PART_2 :: 3197436
+RESULT_PART_2 :: 216668579770346
 // 3197436
 // 2025830
 
@@ -89,7 +89,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 			length: u64= 0
 			
 			for pair in zipped_combs {
-				memo := map[[2]rune]u64{}
+				memo := map[[3]rune]u64{}
 				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, dir_pad_length, 2, &memo)
 			}
 			best = min(best,length)
@@ -144,7 +144,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 
 			length: u64= 0
 			for pair in zipped_combs {
-				memo := map[[2]rune]u64{}
+				memo := map[[3]rune]u64{}
 				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves,dir_pad_length, 25, &memo)
 			}
 			best = min(best,length)
@@ -234,6 +234,7 @@ find_paths :: proc(pad: [][]rune, from, to: [2]int) -> []string {
 		if cur.position == to {
 			new_buf, _ := slice.concatenate([][]rune{cur.buff, []rune{'A'}})
 			append(&result, utf8.runes_to_string(new_buf))
+			continue
 		}
 
 		for move in get_neighbours(pad, cur.position) {
@@ -324,10 +325,10 @@ r_r_movements_length :: proc(
 	dir_pad_moves: map[[2]rune][]string,
 	dir_pad_length: map[[2]rune]u64,
 	depth: int,
-	memo: ^map[[2]rune]u64,
+	memo: ^map[[3]rune]u64,
 ) -> u64 {
-	if pair in memo {
-		return memo[pair]
+	if ([3]rune{pair.x, pair.y, rune(depth)}) in memo {
+		return memo[{pair.x, pair.y, rune(depth)}]
 	}
 
 	if depth == 1 {
@@ -352,9 +353,9 @@ r_r_movements_length :: proc(
 		best = min(best, result)
 	}
 
-	memo[pair] = best
+	memo[{pair.x, pair.y, rune(depth)}] = best
 
-	return memo[pair]
+	return memo[{pair.x, pair.y, rune(depth)}]
 }
 
 
