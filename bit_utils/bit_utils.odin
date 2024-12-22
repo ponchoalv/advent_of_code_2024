@@ -5,7 +5,6 @@ Direction :: enum {
 	DOWN,
 	BACKWARD,
 	UP,
-	LENGTH,
 }
 
 Side :: enum {
@@ -20,7 +19,6 @@ Direction_Vector :: [Direction][2]int{
 	.DOWN = {1, 0},
 	.BACKWARD = {0, -1},
 	.UP = {-1, 0},
-	.LENGTH = {0, 0},
 }
 
 Side_Vector :: [Side][2]i16{
@@ -35,8 +33,8 @@ Side_Vec := Side_Vector
 
 get_direction_left_right :: proc(dir: Direction) -> []Direction {
 	dirs := [dynamic]Direction{}
-	append(&dirs, Direction((u8(dir) + u8(1)) % u8(Direction.LENGTH)))
-	append(&dirs, Direction((u8(dir) + u8(3)) % u8(Direction.LENGTH)))
+	append(&dirs, Direction((u8(dir) + u8(1)) % u8(4)))
+	append(&dirs, Direction((u8(dir) + u8(3)) % u8(4)))
 	return dirs[:]
 }
 

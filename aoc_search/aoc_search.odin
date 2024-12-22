@@ -2,6 +2,7 @@ package aoc_search
 
 import "core:container/priority_queue"
 import "core:fmt"
+import "base:runtime"
 
 dijkstra :: proc(grid: $T/[][]$E, start: E, target: E, less: proc(a,b: E)->bool, get_neighbours: proc(grid: T, current: E) -> []E) -> int {
 	costs := make(map[[3]int]int, context.temp_allocator)
@@ -31,4 +32,15 @@ dijkstra :: proc(grid: $T/[][]$E, start: E, target: E, less: proc(a,b: E)->bool,
 		}
 	}
 	return -1
+}
+
+@(require_results)
+filter_by_with_param :: proc(s: $S/[]$U, size:int, f: proc(g:U, m:int) -> bool, allocator := context.allocator) -> (res: S, err: runtime.Allocator_Error) #optional_allocator_error {
+	r := make([dynamic]U, 0, 0, allocator) or_return
+	for v in s {
+		if f(v,size) {
+			append(&r, v)
+		}
+	}
+	return r[:], nil
 }
