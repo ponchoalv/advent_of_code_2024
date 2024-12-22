@@ -58,18 +58,25 @@ main :: proc() {
 	test_part_2("day_21_input", RESULT_PART_2)
 }
 
+
+/* The problem initially was solved by brute force (part 1)
+	After part 2 some bits from part one stayed others were removed.
+	pre_calculated moves was kept, improved, merged into one dictionary 
+	so we could use them in a recursive function later on.
+*/
 part_1 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 	fmt.println(input)
 
+	// pre-calculate best movements from one digit to another in the pads
+	// this implementation was a simple BFS with a cost tracking map so we only got all the best paths
 	pre_calculated_moves := map[[2]rune][]string{}
 	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
 	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
 	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
 
 	lines := strings.split_lines(input)
-
 	for code in lines {
 		if code == "" {continue}
 		numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
@@ -90,18 +97,20 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	return
 }
 
+
 part_2 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 	fmt.println(input)
 
-	lines := strings.split_lines(input)
-
+	// pre-calculate best movements from one digit to another in the pads
+	// this implementation was a simple BFS with a cost tracking map so we only got all the best paths
 	pre_calculated_moves := map[[2]rune][]string{}
 	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
 	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
 	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
 
+	lines := strings.split_lines(input)
 	for code in lines {
 		if code == "" {continue}
 		numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
