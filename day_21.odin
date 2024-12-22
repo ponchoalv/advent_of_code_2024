@@ -48,6 +48,9 @@ Direction_Move_Vector :: [bu.Direction]rune {
 
 Dir_Move := Direction_Move_Vector
 
+
+memo := map[[3]rune]u64{}
+
 main :: proc() {
 	fmt.println("Running day_21...")
 	test_part_1("day_21_example_input", EXAMPLE_PART_1)
@@ -62,13 +65,8 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	fmt.println(input)
 
 	num_pad_moves := pre_calculate_pad_moves(NUM_PAD)
-	fmt.println(num_pad_moves)
-
 	dir_pad_moves := pre_calculate_pad_moves(DIR_PAD)
-	fmt.println(dir_pad_moves)
-
 	dir_pad_length := pre_calculate_pad_moves_length(dir_pad_moves)
-	fmt.println(dir_pad_length)
 
 	lines := strings.split_lines(input)
 
@@ -89,29 +87,12 @@ part_1 :: proc(filename: string) -> (result: u64) {
 			length: u64= 0
 			
 			for pair in zipped_combs {
-				memo := map[[3]rune]u64{}
 				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves, dir_pad_length, 2, &memo)
 			}
 			best = min(best,length)
 		}
-
-		fmt.println(best)
-
-
-		// tengo que hacer esto de forma recursiva y con memoization
-		// first_robot := get_movements_second_robot(first_robot_movements, dir_pad_moves)
-		// second_robot := get_movements_second_robot(first_robot, dir_pad_moves)
-
 		result += best * numeric_code
-		fmt.println(result)
-
-		// free_all(context.temp_allocator)
 	}
-
-
-	// context.allocator = allocator
-	// fmt.println(num_pad_moves)
-	// fmt.println(dir_pad_moves)
 
 	elapsed := time.since(start)
 
@@ -144,13 +125,10 @@ part_2 :: proc(filename: string) -> (result: u64) {
 
 			length: u64= 0
 			for pair in zipped_combs {
-				memo := map[[3]rune]u64{}
 				length += r_r_movements_length({pair.x, pair.y}, dir_pad_moves,dir_pad_length, 25, &memo)
 			}
 			best = min(best,length)
 		}
-
-		fmt.println(best, numeric_code, result)
 
 		result += (best * numeric_code)
 	}
@@ -213,8 +191,6 @@ get_neighbours :: proc(grid: [][]rune, current: [2]int) -> []Move {
 			}
 		}
 	}
-
-	// fmt.println("moves", current, result)
 
 	return result[:]
 }
@@ -304,10 +280,7 @@ get_movements_second_robot :: proc(
 	for move in moves {
 		append(&result, ..get_movements_for_first_robot(move, dir_pad_moves))
 	}
-
-
-	// fmt.println(len(result))
-	// fmt.println(min_size)/
+	
 	min_size := get_shortest_string_size(result[:])
 	filtered := aoc_search.filter_by_with_param(
 		result[:],
@@ -315,7 +288,6 @@ get_movements_second_robot :: proc(
 		proc(s: string, min_size: int) -> bool {return min_size == len(s)},
 		context.temp_allocator,
 	)
-	// fmt.println(len(filtered))
 
 	return filtered
 }
