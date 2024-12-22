@@ -1,10 +1,6 @@
 package day_21
 
-import "aoc_search"
-import "aoc_strings"
-import "base:builtin"
 import bu "bit_utils"
-import "core:container/queue"
 import sa "core:container/small_array"
 import "core:fmt"
 import "core:os"
@@ -15,15 +11,11 @@ import "core:time"
 import "core:unicode/utf8"
 
 EXAMPLE_PART_1 :: 126384
-EXAMPLE_PART_2 :: 2965114
+EXAMPLE_PART_2 :: 154115708116294
 
 RESULT_PART_1 :: 174124
-RESULT_PART_2 :: 2769354
-// 2025830
-// 3197436
-// 11664556
-// 1034210004
-// 4870032
+RESULT_PART_2 :: 216668579770346
+
 NUM_PAD := [][]rune {
 	[]rune{'7', '8', '9'},
 	[]rune{'4', '5', '6'},
@@ -31,7 +23,10 @@ NUM_PAD := [][]rune {
 	[]rune{'#', '0', 'A'},
 }
 
-DIR_PAD := [][]rune{[]rune{'#', '^', 'A'}, []rune{'<', 'v', '>'}}
+DIR_PAD := [][]rune{
+	[]rune{'#', '^', 'A'}, 
+	[]rune{'<', 'v', '>'},
+}
 
 Move :: struct {
 	position: [2]int,
@@ -45,10 +40,15 @@ Direction_Move_Vector :: [bu.Direction]rune {
 	.BACKWARD = '<',
 	.UP       = '^',
 }
-
 Dir_Move := Direction_Move_Vector
-memo := map[string]u64{}
 
+// used for memo in recursive function
+MemoData :: struct {
+	seq:   string,
+	depth: int,
+}
+// cache / memo for recursive function
+memo := map[MemoData]u64{}
 
 main :: proc() {
 	fmt.println("Running day_21...")
@@ -66,69 +66,23 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	pre_calculated_moves := map[[2]rune][]string{}
 	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
 	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
-
 	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
-
-	fmt.println(pre_calculate_length)
-	fmt.println(pre_calculated_moves)
-
-	// num_pad_moves := pre_calculate_pad_moves(NUM_PAD)
-	// fmt.println(num_pad_moves)
-
-	// dir_pad_moves := pre_calculate_pad_moves(DIR_PAD)
-	// fmt.println(dir_pad_moves)
-
-	// pre_calculate_length := pre_calculate_pad_moves_length(dir_pad_moves)
-	// fmt.println(pre_calculate_length)
 
 	lines := strings.split_lines(input)
 
 	for code in lines {
 		if code == "" {continue}
-
 		numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
-
-		// code_with_a, _ := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(code)})
-		// zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
-
-		// best: u64 = max(u64)
-		// length: u64 = 0
-		// for pair in zipped_combs {
-		// 	length += r_2_r_movements_count(
-		// 		{pair.x, pair.y},
-		// 		pre_calculated_moves,
-		// 		pre_calculate_length,
-		// 		3,
-		// 		&memo,
-		// 	)
-		// }
-
-
-		fmt.println(r_2_r_movements_count_2(code,pre_calculated_moves,pre_calculate_length, 3,&memo))
-
-
-
-
-		// fmt.print(length, " ")
-		// best = min(best, length)
-
-		// fmt.println(best)
-
-
-		// tengo que hacer esto de forma recursiva y con memoization
-		// first_robot := get_movements_second_robot(first_robot_movements, dir_pad_moves)
-		// second_robot := get_movements_second_robot(first_robot, dir_pad_moves)
-
-		// result += best * numeric_code
-		fmt.println(result)
-
-		// free_all(context.temp_allocator)
+		result +=
+			count_movements_per_sequence(
+				code,
+				pre_calculated_moves,
+				pre_calculate_length,
+				1 + 2,
+				&memo,
+			) *
+			numeric_code
 	}
-
-
-	// context.allocator = allocator
-	// fmt.println(num_pad_moves)
-	// fmt.println(dir_pad_moves)
 
 	elapsed := time.since(start)
 
@@ -146,49 +100,21 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	pre_calculated_moves := map[[2]rune][]string{}
 	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
 	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
-
 	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
 
-	fmt.println(pre_calculate_length)
-	fmt.println(pre_calculated_moves)
-
-
-	// for code in lines {
-	// 	if code == "" {continue}
-
-	// 	numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
-
-	// 	code_with_a, _ := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(code)})
-	// 	zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
-
-	// 	best: u64 = max(u64)
-	// 	length: u64 = 0
-	// 	for pair in zipped_combs {
-	// 		// memo := map[[2]rune]u64{}
-	// 		length += r_2_r_movements_count(
-	// 			{pair.x, pair.y},
-	// 			pre_calculated_moves,
-	// 			pre_calculate_length,
-	// 			1 + 25,
-	// 			&memo,
-	// 		)
-	// 	}
-
-	// 	fmt.print(length, " ")
-	// 	best = min(best, length)
-
-	// 	fmt.println(best)
-
-
-	// 	// tengo que hacer esto de forma recursiva y con memoization
-	// 	// first_robot := get_movements_second_robot(first_robot_movements, dir_pad_moves)
-	// 	// second_robot := get_movements_second_robot(first_robot, dir_pad_moves)
-
-	// 	result += best * numeric_code
-	// 	fmt.println(result)
-
-	// 	// free_all(context.temp_allocator)
-	// }
+	for code in lines {
+		if code == "" {continue}
+		numeric_code, _ := strconv.parse_u64(code[:len(code) - 1])
+		result +=
+			count_movements_per_sequence(
+				code,
+				pre_calculated_moves,
+				pre_calculate_length,
+				1 + 25,
+				&memo,
+			) *
+			numeric_code
+	}
 
 	elapsed := time.since(start)
 	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
@@ -249,21 +175,19 @@ get_neighbours :: proc(grid: [][]rune, current: [2]int) -> []Move {
 		}
 	}
 
-	// fmt.println("moves", current, result)
-
 	return result[:]
 }
 
 find_paths :: proc(pad: [][]rune, from, to: [2]int) -> []string {
 	costs := make(map[[2]int]int, context.temp_allocator)
 
-	q: queue.Queue(Move)
+	q: sa.Small_Array(12, Move)
 	result := make([dynamic]string)
 
-	queue.push_back(&q, Move{position = from})
+	sa.push_back(&q, Move{position = from})
 
-	outer: for queue.len(q) > 0 {
-		cur := queue.pop_front(&q)
+	outer: for sa.len(q) > 0 {
+		cur := sa.pop_front(&q)
 
 		if cur.position == to {
 			new_buf, _ := slice.concatenate([][]rune{cur.buff, []rune{'A'}})
@@ -280,7 +204,7 @@ find_paths :: proc(pad: [][]rune, from, to: [2]int) -> []string {
 				costs[[2]int{move.position.x, move.position.y}] = len(cur.buff) + 1
 
 				new_buff, _ := slice.concatenate([][]rune{cur.buff, []rune{move.move}})
-				queue.push_back(&q, Move{position = move.position, buff = new_buff})
+				sa.push_back(&q, Move{position = move.position, buff = new_buff})
 			}
 		}
 	}
@@ -317,113 +241,22 @@ pre_calculate_pad_moves_length :: proc(
 	return
 }
 
-get_movements_for_first_robot :: proc(
-	code: string,
-	num_pad_moves: map[[2]rune][]string,
-) -> []string {
-	movements_per_pair := make([dynamic][]string, context.temp_allocator)
-	code_with_a, _ := slice.concatenate(
-		[][]rune{[]rune{'A'}, utf8.string_to_runes(code)},
-		context.temp_allocator,
-	)
-	zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
-
-	for pair in zipped_combs {
-		append(&movements_per_pair, num_pad_moves[{pair.x, pair.y}])
-	}
-
-	return aoc_strings.generateCombinations(movements_per_pair[:])
-}
-
-get_movements_second_robot :: proc(
-	moves: []string,
-	dir_pad_moves: map[[2]rune][]string,
-) -> []string {
-	result := make([dynamic]string, context.temp_allocator)
-
-	for move in moves {
-		append(&result, ..get_movements_for_first_robot(move, dir_pad_moves))
-	}
-
-
-	// fmt.println(len(result))
-	// fmt.println(min_size)/
-	min_size := get_shortest_string_size(result[:])
-	filtered := aoc_search.filter_by_with_param(
-		result[:],
-		min_size,
-		proc(s: string, min_size: int) -> bool {return min_size == len(s)},
-		context.temp_allocator,
-	)
-	// fmt.println(len(filtered))
-
-	return filtered
-}
-
-r_2_r_movements_count :: proc(
-	pair: [2]rune,
+count_movements_per_sequence :: proc(
+	code_seq: string,
 	dir_pad_moves: map[[2]rune][]string,
 	pre_calculate_length: map[[2]rune]u64,
 	depth: int,
-	memo: ^map[[2]rune]u64,
+	memo: ^map[MemoData]u64,
 ) -> u64 {
+	if (MemoData{code_seq, depth}) in memo {
+		return memo[MemoData{code_seq, depth}]
+	}
+
 	if depth == 1 {
-		return u64(len(dir_pad_moves[pair][0]))
-	}
+		code_with_a, _ := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(code_seq)})
 
-	if pair in memo {
-		return memo[pair]
-	}
-
-	best: u64 = max(u64)
-
-	for xs in dir_pad_moves[pair] {
+		zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
 		result: u64 = 0
-
-		code_with_a, err := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(xs)})
-		if err != nil {
-			panic("something happened")
-		}
-
-		zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
-
-		for pp in zipped_combs {
-			result += r_2_r_movements_count(
-				{pp.x, pp.y},
-				dir_pad_moves,
-				pre_calculate_length,
-				depth - 1,
-				memo,
-			)
-		}
-
-		best = min(best, result)
-	}
-
-	memo[pair] = best
-
-	return memo[pair]
-}
-
-
-r_2_r_movements_count_2 :: proc(
-	code_seq: string,
-	dir_pad_moves: map[[2]rune][]string,
-	pre_calculate_length: map[[3]rune]u64,
-	depth: int,
-	memo: ^map[string]u64,
-) -> u64 {
-	
-	if depth == 1 {
-		code_with_a, err := slice.concatenate(
-			[][]rune{[]rune{'A'}, utf8.string_to_runes(code_seq)},
-		)
-		if err != nil {
-			panic("something happened")
-		}
-
-		zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
-		result: u64= 0
 
 		for pp in zipped_combs {
 			result += pre_calculate_length[{pp.x, pp.y}]
@@ -432,38 +265,26 @@ r_2_r_movements_count_2 :: proc(
 		return result
 	}
 
-	if code_seq in memo {
-		return memo[code_seq]
-	}
-
-
 	code_with_a, err := slice.concatenate([][]rune{[]rune{'A'}, utf8.string_to_runes(code_seq)})
-	if err != nil {
-		panic("something happened")
-	}
 
 	zipped_combs := soa_zip(x = code_with_a, y = code_with_a[1:])
-
-	
+	result: u64 = 0
 	for pp in zipped_combs {
-		result:u64=0
+		best: u64 = max(u64)
 		for sub_seq in dir_pad_moves[{pp.x, pp.y}] {
-			vvv := r_2_r_movements_count_2( sub_seq, dir_pad_moves, pre_calculate_length, depth - 1, memo)
-			fmt.println(code_seq, vvv)
-			result += r_2_r_movements_count_2( sub_seq, dir_pad_moves, pre_calculate_length, depth - 1, memo)
+			sub_length := count_movements_per_sequence(
+				sub_seq,
+				dir_pad_moves,
+				pre_calculate_length,
+				depth - 1,
+				memo,
+			)
+			best = min(best, sub_length)
 		}
+		result += best
 	}
 
-	memo[code_seq] = result
+	memo[MemoData{code_seq, depth}] = result
 
-	return memo[code_seq]
-}
-
-get_shortest_string_size :: proc(list: []string) -> int {
-	min := max(int)
-	for l in list {
-		min = builtin.min(min, len(l))
-	}
-
-	return min
+	return memo[MemoData{code_seq, depth}]
 }
