@@ -49,6 +49,17 @@ encode :: proc(x, y:u16, d: u8) -> (combined:u32) {
     return
 }
 
+encode_x_y_z_k :: proc(x, y, z, k:i16) -> (combined:u32) {
+	// n_x :u32= 8 // Bits for x
+    n_y :u32= 8 // Bits for y
+    n_z :u32= 8 // Bits for y
+    n_k :u32= 8 // Bits for y
+
+    combined = (u32(x) << (n_y + n_z + n_k)) | (u32(y) << (n_z + n_k)) | (u32(z) <<  n_k) | u32(z)
+
+    return
+}
+
 decode :: proc (combined: u32) -> (x: u16, y: u16, d: u8) {
     // n_x :u32= 10 // Bits for x
     n_y :u32= 10 // Bits for y

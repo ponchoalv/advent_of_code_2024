@@ -50,8 +50,23 @@ MemoData :: struct {
 // cache / memo for recursive function
 memo := map[MemoData]u64{}
 
+pre_calculated_moves := map[[2]rune][]string{}
+pre_calculate_length := map[[2]rune]u64{}
+
 main :: proc() {
 	fmt.println("Running day_21...")
+	
+	start := time.now()
+	
+	// pre-calculate best movements from one digit to another in the pads
+	// this implementation was a simple BFS with a cost tracking map so we only got all the best paths
+	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
+	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
+	pre_calculate_pad_moves_length(pre_calculated_moves, &pre_calculate_length)
+	
+	elapsed := time.since(start)
+	fmt.printf("time elapsed pre-calculating moves: %fms\n", time.duration_milliseconds(elapsed))	
+	
 	test_part_1("day_21_example_input", EXAMPLE_PART_1)
 	test_part_2("day_21_example_input", EXAMPLE_PART_2)
 	test_part_1("day_21_input", RESULT_PART_1)
@@ -68,13 +83,6 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 	fmt.println(input)
-
-	// pre-calculate best movements from one digit to another in the pads
-	// this implementation was a simple BFS with a cost tracking map so we only got all the best paths
-	pre_calculated_moves := map[[2]rune][]string{}
-	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
-	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
-	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
 
 	lines := strings.split_lines(input)
 	for code in lines {
@@ -102,13 +110,6 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 	fmt.println(input)
-
-	// pre-calculate best movements from one digit to another in the pads
-	// this implementation was a simple BFS with a cost tracking map so we only got all the best paths
-	pre_calculated_moves := map[[2]rune][]string{}
-	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
-	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
-	pre_calculate_length := pre_calculate_pad_moves_length(pre_calculated_moves)
 
 	lines := strings.split_lines(input)
 	for code in lines {
@@ -238,8 +239,7 @@ pre_calculate_pad_moves :: proc(pad: [][]rune, result: ^map[[2]rune][]string) {
 
 pre_calculate_pad_moves_length :: proc(
 	pre_calc_moves: map[[2]rune][]string,
-) -> (
-	result: map[[2]rune]u64,
+	result: ^map[[2]rune]u64,
 ) {
 	for k, v in pre_calc_moves {
 		if len(v) > 0 {
@@ -252,7 +252,7 @@ pre_calculate_pad_moves_length :: proc(
 
 count_movements_per_sequence :: proc(
 	code_seq: string,
-	dir_pad_moves: map[[2]rune][]string,
+	pre_calculated_moves: map[[2]rune][]string,
 	pre_calculate_length: map[[2]rune]u64,
 	depth: int,
 	memo: ^map[MemoData]u64,
@@ -280,10 +280,10 @@ count_movements_per_sequence :: proc(
 	result: u64 = 0
 	for pp in zipped_combs {
 		best: u64 = max(u64)
-		for sub_seq in dir_pad_moves[{pp.x, pp.y}] {
+		for sub_seq in pre_calculated_moves[{pp.x, pp.y}] {
 			sub_length := count_movements_per_sequence(
 				sub_seq,
-				dir_pad_moves,
+				pre_calculated_moves,
 				pre_calculate_length,
 				depth - 1,
 				memo,

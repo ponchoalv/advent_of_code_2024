@@ -26,7 +26,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	fmt.println(input)
 	elapsed := time.since(start)
 	
-	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
+	fmt.printf("time elapsed in part 1: %fms\n", time.duration_milliseconds(elapsed))
 	return
 }
 
@@ -36,7 +36,7 @@ part_2 :: proc(filename: string)  -> (result: u64) {
 	fmt.println(input)
 	elapsed := time.since(start)
 	
-	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
+	fmt.printf("time elapsed in part 2: %fms\n", time.duration_milliseconds(elapsed))
 	return
 }
 
