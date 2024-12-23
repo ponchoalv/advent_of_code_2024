@@ -152,8 +152,23 @@ get_biggest_network_for_computer :: proc(grouped_computers: map[string]map[strin
 		append(&result[matched_count], pc)
 	}
 
-	slice.sort((result[len(result)-2])[:])
-	network := strings.join((result[len(result)-2])[:], ",")
+	network := string{}
+	best := min(int)
+
+	/* the first that have >1 means that is the biggest cluster of networks
+		This also works for my input:
+			slice.sort((result[len(result)-2])[:])
+			network := strings.join((result[len(result)-2])[:], ",")
+		if the first group matched means that all the connections of that pc are part of cluster,
+		if the next one match, means that all the pcs connected to the current pc but 1 are part of the same network
+	*/
+	#reverse for &res, i in result {
+		if len(res) > 1 && len(res) >= len(result) {
+			slice.sort(res[:])
+			network = strings.join(res[:i+2], ",")
+			break
+		}
+	}
 
 	return network
 }
