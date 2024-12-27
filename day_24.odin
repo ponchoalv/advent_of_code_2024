@@ -323,13 +323,17 @@ parse_gates_inputs :: proc(input: string, gates, inputs: ^map[string]Gate) {
 
     	Repeat this for all 45 bits.
 	*/
-edge :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
+edge :: proc(gates: map[string]Gate, wire: string, depth: int, memo: ^map[[2]string]bool) -> bool {
 	// fmt.printf("%*[0]s%s%s\n", depth, " ","edge ", wire)
 	if !(wire in gates) {
 		return false
 	}
 
 	gate := gates[wire]
+
+	if gate.inputs in memo {
+		return memo[gate.inputs]
+	}
 
 	if gate.operation != .XOR {
 		return false
@@ -339,10 +343,13 @@ edge :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
 		return gate.inputs == [2]string{"x00", "y00"} || gate.inputs == [2]string{"y00", "x00"}
 	}
 
-	return(
-		intermediate_xor(gates, gate.inputs.x, depth) && carry_bit(gates, gate.inputs.y, depth) ||
-		intermediate_xor(gates, gate.inputs.y, depth) && carry_bit(gates, gate.inputs.x, depth) \
-	)
+	memo[gate.inputs] =
+		intermediate_xor(gates, gate.inputs.x, depth) &&
+			carry_bit(gates, gate.inputs.y, depth, memo) ||
+		intermediate_xor(gates, gate.inputs.y, depth) &&
+			carry_bit(gates, gate.inputs.x, depth, memo)
+
+	return memo[gate.inputs]
 }
 
 intermediate_xor :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
@@ -350,13 +357,22 @@ intermediate_xor :: proc(gates: map[string]Gate, wire: string, depth: int) -> bo
 	return check_gate_type(gates, wire, depth, .XOR)
 }
 
-carry_bit :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
+carry_bit :: proc(
+	gates: map[string]Gate,
+	wire: string,
+	depth: int,
+	memo: ^map[[2]string]bool,
+) -> bool {
 	// fmt.printf("%*[0]s%s%s\n", depth, " ","carry ", wire)
 	if !(wire in gates) {
 		return false
 	}
 
 	gate := gates[wire]
+
+	if gate.inputs in memo {
+		return memo[gate.inputs]
+	}
 
 	if depth == 1 {
 		if gate.operation != .AND {
@@ -370,12 +386,13 @@ carry_bit :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
 		return false
 	}
 
-	return(
+	memo[gate.inputs] =
 		d_carry_bit(gates, gate.inputs.x, depth - 1) &&
-			re_carry_bit(gates, gate.inputs.y, depth - 1) ||
+			re_carry_bit(gates, gate.inputs.y, depth - 1, memo) ||
 		d_carry_bit(gates, gate.inputs.y, depth - 1) &&
-			re_carry_bit(gates, gate.inputs.x, depth - 1) \
-	)
+			re_carry_bit(gates, gate.inputs.x, depth - 1, memo)
+
+	return memo[gate.inputs]
 }
 
 d_carry_bit :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
@@ -383,22 +400,31 @@ d_carry_bit :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
 	return check_gate_type(gates, wire, depth, .AND)
 }
 
-re_carry_bit :: proc(gates: map[string]Gate, wire: string, depth: int) -> bool {
+re_carry_bit :: proc(
+	gates: map[string]Gate,
+	wire: string,
+	depth: int,
+	memo: ^map[[2]string]bool,
+) -> bool {
 	// fmt.printf("%*[0]s%s%s\n", depth, " ", "d_carry ", wire)
 	if !(wire in gates) {
 		return false
 	}
 
 	gate := gates[wire]
+	if gate.inputs in memo {
+		return memo[gate.inputs]
+	}
 
 	if gate.operation != .AND {
 		return false
 	}
 
-	return(
-		intermediate_xor(gates, gate.inputs.x, depth) && carry_bit(gates, gate.inputs.y, depth) ||
-		intermediate_xor(gates, gate.inputs.y, depth) && carry_bit(gates, gate.inputs.x, depth) \
-	)
+	memo[gate.inputs] =
+		intermediate_xor(gates, gate.inputs.x, depth) && carry_bit(gates, gate.inputs.y, depth, memo) ||
+		intermediate_xor(gates, gate.inputs.y, depth) && carry_bit(gates, gate.inputs.x, depth, memo)
+
+	return memo[gate.inputs]
 }
 
 format_wire :: proc(wire_prefix: string, wire_num: int) -> string {
@@ -422,15 +448,18 @@ check_gate_type :: proc(gates: map[string]Gate, wire: string, depth: int, ops: O
 	return gate.inputs == [2]string{x, y} || gate.inputs == [2]string{y, x}
 }
 
-check_gate :: proc(gates: map[string]Gate, gate_num: int) -> bool {
-	return edge(gates, format_wire("z", gate_num), gate_num)
+check_gate :: proc(gates: map[string]Gate, gate_num: int, memo: ^map[[2]string]bool) -> bool {
+	return edge(gates, format_wire("z", gate_num), gate_num, memo)
 }
 
 
 check_progress :: proc(gates: map[string]Gate) -> int {
+	memo := make(map[[2]string]bool)
+	defer delete_map(memo)
+
 	progress := 0
 	for true {
-		if !check_gate(gates, progress) {
+		if !check_gate(gates, progress, &memo) {
 			break
 		}
 
@@ -445,14 +474,14 @@ check_progress :: proc(gates: map[string]Gate) -> int {
 // will return the swaped gates joined and sorted in a string
 find_and_swap_faulty_gates :: proc(gates: ^map[string]Gate, gates_srt: []string) -> string {
 	swaps := [dynamic]string{}
-	
+
 	for _ in 0 ..< 4 {
 		// track how far we made it before/after swaps
 		base_progress := check_progress(gates^)
 		seen := map[[2]string]bool{}
 		x_loop: for x in gates_srt {
 			for y in gates_srt {
-				if x == y || {x,y} in seen || {y,x} in seen {
+				if x == y || {x, y} in seen || {y, x} in seen {
 					continue
 				}
 
