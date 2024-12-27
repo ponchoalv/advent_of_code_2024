@@ -41,6 +41,8 @@ main :: proc() {
 	// test_part_2("day_24_example_input", EXAMPLE_PART_2)
 	test_part_1("day_24_input", RESULT_PART_1)
 	test_part_2("day_24_input", RESULT_PART_2)
+	
+	// part_2_my_first_approach("day_24_input")
 }
 
 part_1 :: proc(filename: string) -> (result: u64) {
@@ -83,6 +85,24 @@ part_2 :: proc(filename: string) -> (result: string) {
 
 	result = find_and_swap_faulty_gates(&gates, gates_str)
 	fmt.println(result)
+
+	elapsed := time.since(start)
+
+	fmt.printf("time elapsed in part 2: %fms\n", time.duration_milliseconds(elapsed))
+	return
+}
+
+part_2_my_first_approach :: proc(filename: string) -> (result: string) {
+	start := time.now()
+	input := read_file(filename)
+	inputs := map[string]Gate{}
+	gates := map[string]Gate{}
+	parse_gates_inputs(input, &gates, &inputs)
+
+	gates_str, _ := slice.map_keys(gates)
+	slice.sort(gates_str)
+
+	fmt.println(fix_crossed_wires(inputs, &gates, gates_str))
 
 	elapsed := time.since(start)
 
@@ -415,6 +435,122 @@ find_and_swap_faulty_gates :: proc(gates: ^map[string]Gate, gates_srt: []string)
 
 	return joined
 }
+
+// with the checking functions in place, lets brute force this thing :D
+// will loop and try swapes in faulty wires/gates once it fix all of them
+// will return the swaped gates joined and sorted in a string
+fix_crossed_wires :: proc(inputs: map[string]Gate, gates: ^map[string]Gate, gates_srt: []string) -> string {
+	inputs_keys, _ := slice.map_keys(inputs)
+	x_inputs_keys := slice.filter(inputs_keys, proc(s:string) -> bool {return strings.has_prefix(s, "x")})
+	slice.sort(x_inputs_keys)
+
+	y_inputs_keys := slice.filter(inputs_keys, proc(s:string) -> bool {return strings.has_prefix(s, "y")})
+	slice.sort(y_inputs_keys)
+
+	x_input_bools := [dynamic]bool{}
+	y_input_bools := [dynamic]bool{}
+
+	for x in x_inputs_keys {
+		append(&x_input_bools, inputs[x].value)
+	}
+
+	for y in y_inputs_keys {
+		append(&y_input_bools, inputs[y].value)
+	}
+
+	fmt.println(calculate_num(x_input_bools[:]))
+	fmt.println(calculate_num(y_input_bools[:]))
+
+	expected := from_decimal_to_bool_array(calculate_num(x_input_bools[:]) + calculate_num(y_input_bools[:]), 46)
+
+	keys, _ := slice.map_keys(gates^)
+	slice.sort(keys)
+	calculated := [dynamic]bool{}
+	memo := map[string]bool{}
+	for k in keys {
+		if gates[k].type == .EDGE {
+			append(&calculated, calculate_gate_value(gates^, inputs, gates[k].id, &memo))
+		} else {
+			continue
+		}
+	}
+
+	fmt.println(expected)
+	fmt.println(calculated)
+
+	fmt.println(calculate_num(expected))
+	fmt.println(calculate_num(calculated[:]))
+	fmt.println(get_first_failing_bit(expected, calculated[:]))
+
+	swaps := [dynamic]string{}
+
+	// look for 4 swaps
+	for _ in 0 ..< 4 {
+		// track how far we made it before/after swaps
+		base_progress, fixed := get_first_failing_bit(expected, calculated[:])
+		seen := map[[2]string]bool{}
+		x_loop: for x in gates_srt {
+			for y in gates_srt {
+				if x == y || {x, y} in seen || {y, x} in seen {
+					continue
+				}
+
+				// swap the gates
+				gates[x], gates[y] = gates[y], gates[x]
+
+				seen[{x, y}] = true
+				seen[{y, x}] = true
+				memo := make(map[string]bool)
+				defer delete_map(memo)
+				temp_calc := make([dynamic]bool, len(expected))
+				// defer delete(bit_error_position)
+
+				// fmt.println(format_wire("z", base_progress))
+				fmt.println(len(expected))
+				// fmt.println(calculated[:])
+				fmt.println("im here")
+				for z in base_progress..<len(expected) {
+					temp_calc[z] = calculate_gate_value(gates^, inputs, format_wire("z", z), &memo)
+				}
+
+				bit_error_position, f := get_first_failing_bit(expected, temp_calc[:])
+
+				if bit_error_position > base_progress {
+					fmt.println(format_wire("z", base_progress))
+					// fmt.println(expected)
+					base_progress= bit_error_position
+					calculated = temp_calc
+					append(&swaps, x, y)
+					break x_loop
+				}
+				
+				// restore swaped gates, there was no improvement
+				gates[x], gates[y] = gates[y], gates[x]
+			}
+		}
+
+		fmt.println("swaps so far:", swaps)
+	}
+
+	slice.sort(swaps[:])
+	joined, _ := strings.join(swaps[:], ",")
+
+	return joined
+}
+
+
+get_first_failing_bit :: proc(expected, current : []bool) -> (int, bool) {
+	zipped := soa_zip(e=expected, c=current)
+
+	for pair, i in zipped {
+		if pair.e != pair.c {
+			return i, false
+		}
+	}
+
+	return 0, true
+}
+
 
 from_decimal_to_bool_array :: proc(value: u64, bits_length: uint) -> []bool {
 	result := make([]bool, bits_length)
