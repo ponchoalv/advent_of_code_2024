@@ -20,6 +20,7 @@ main :: proc() {
 	test_part_2("day_11_example_input", EXAMPLE_PART_2)
 	test_part_1("day_11_input", RESULT_PART_1)
 	test_part_2("day_11_input", RESULT_PART_2)
+	part_2_recursive("day_11_input")
 }
 
 part_1 :: proc(filename: string) -> (result: u64) {
@@ -41,6 +42,26 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	elapsed := time.since(start)
 
 	fmt.printf("time elapsed computing operators: %fms\n", time.duration_milliseconds(elapsed))
+	return
+}
+
+part_2_recursive :: proc(filename: string) -> (result: u64) {
+	start := time.now()
+	input := read_file(filename)
+	// result = count_after_blink(input, 75)
+	// stones := map[u64]u64{}
+	memo := map[[2]u64]u64{}
+
+	for n in strings.split(input, " ") {
+		num, _ := strconv.parse_u64(strings.trim(n, "\n "))
+		result += blink_recursive(num, 75, &memo)
+	}
+
+
+	fmt.println("recursive approach result: ", result)
+	elapsed := time.since(start)
+
+	fmt.printf("time elapsed with recursive approach: %fms\n", time.duration_milliseconds(elapsed))
 	return
 }
 
