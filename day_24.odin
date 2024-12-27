@@ -78,7 +78,6 @@ part_2 :: proc(filename: string) -> (result: string) {
 	gates := map[string]Gate{}
 	parse_gates_inputs(input, &gates, &inputs)
 
-
 	gates_str, _ := slice.map_keys(gates)
 	slice.sort(gates_str)
 
@@ -125,12 +124,12 @@ read_file :: proc(filename: string) -> string {
 }
 
 calculate_gate_value :: proc(gates, inputs: map[string]Gate, gate_input: string, memo: ^map[string]bool) -> bool {
-	if gate_input in inputs {
-		return inputs[gate_input].value
-	}
-
 	if gate_input in memo {
 		return memo[gate_input]
+	}
+	
+	if gate_input in inputs {
+		return inputs[gate_input].value
 	}
 
 	result: bool
