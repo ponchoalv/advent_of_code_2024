@@ -1,6 +1,7 @@
 package day_23
 
 import "core:container/queue"
+import "core:container/topological_sort"
 import "core:fmt"
 import "core:os"
 import "core:slice"
@@ -81,7 +82,6 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	fmt.printf("time elapsed in part 1: %fms\n", time.duration_milliseconds(elapsed))
 	return
 }
-
 
 part_2 :: proc(filename: string) -> (result: string) {
 	start := time.now()
