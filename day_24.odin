@@ -55,9 +55,10 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	slice.sort(keys)
 
 	num := [dynamic]bool{}
+	memo := map[string]bool{}
 	for k in keys {
 		if gates[k].type == .EDGE {
-			append(&num, calculate_gate_value(gates, inputs, gates[k].id))
+			append(&num, calculate_gate_value(gates, inputs, gates[k].id, &memo))
 		} else {
 			continue
 		}
@@ -123,133 +124,39 @@ read_file :: proc(filename: string) -> string {
 	return string(data)
 }
 
-calculate_gate_value :: proc(gates, inputs: map[string]Gate, gate_input: string) -> bool {
+calculate_gate_value :: proc(gates, inputs: map[string]Gate, gate_input: string, memo: ^map[string]bool) -> bool {
 	if gate_input in inputs {
 		return inputs[gate_input].value
+	}
+
+	if gate_input in memo {
+		return memo[gate_input]
 	}
 
 	result: bool
 	if g, ok := gates[gate_input]; ok {
 		switch g.operation {
 		case .AND:
-			return bool(
-				u8(calculate_gate_value(gates, inputs, g.inputs[0])) &
-				u8(calculate_gate_value(gates, inputs, g.inputs[1])),
+			result = bool(
+				u8(calculate_gate_value(gates, inputs, g.inputs[0], memo)) &
+				u8(calculate_gate_value(gates, inputs, g.inputs[1], memo)),
 			)
 		case .OR:
-			return bool(
-				u8(calculate_gate_value(gates, inputs, g.inputs[0])) |
-				u8(calculate_gate_value(gates, inputs, g.inputs[1])),
+			result = bool(
+				u8(calculate_gate_value(gates, inputs, g.inputs[0], memo)) |
+				u8(calculate_gate_value(gates, inputs, g.inputs[1], memo)),
 			)
 		case .XOR:
-			return bool(
-				u8(calculate_gate_value(gates, inputs, g.inputs[0])) ~
-				u8(calculate_gate_value(gates, inputs, g.inputs[1])),
+			result = bool(
+				u8(calculate_gate_value(gates, inputs, g.inputs[0], memo)) ~
+				u8(calculate_gate_value(gates, inputs, g.inputs[1], memo)),
 			)
 		}
 	}
 
-	return false
-}
-
-calculate_gate_value_track :: proc(
-	gates, inputs: map[string]Gate,
-	gate_input: string,
-	involved_gates: ^map[string][dynamic]Gate,
-	wire_operations: ^map[string][dynamic]Operation,
-	depth: int,
-	parent_gate: string,
-) -> bool {
-	if gate_input in inputs {
-		return inputs[gate_input].value
-	}
-
-	result: bool
-
-	if g, ok := gates[gate_input]; ok {
-
-		append(&involved_gates[parent_gate], g)
-		append(&wire_operations[parent_gate], g.operation)
-
-		switch g.operation {
-		case .AND:
-			result = bool(
-				u8(
-					calculate_gate_value_track(
-						gates,
-						inputs,
-						g.inputs[0],
-						involved_gates,
-						wire_operations,
-						depth + 1,
-						parent_gate,
-					),
-				) &
-				u8(
-					calculate_gate_value_track(
-						gates,
-						inputs,
-						g.inputs[1],
-						involved_gates,
-						wire_operations,
-						depth + 1,
-						parent_gate,
-					),
-				),
-			)
-		case .OR:
-			result = bool(
-				u8(
-					calculate_gate_value_track(
-						gates,
-						inputs,
-						g.inputs[0],
-						involved_gates,
-						wire_operations,
-						depth + 1,
-						parent_gate,
-					),
-				) |
-				u8(
-					calculate_gate_value_track(
-						gates,
-						inputs,
-						g.inputs[1],
-						involved_gates,
-						wire_operations,
-						depth + 1,
-						parent_gate,
-					),
-				),
-			)
-		case .XOR:
-			result = bool(
-				u8(
-					calculate_gate_value_track(
-						gates,
-						inputs,
-						g.inputs[0],
-						involved_gates,
-						wire_operations,
-						depth + 1,
-						parent_gate,
-					),
-				) ~
-				u8(
-					calculate_gate_value_track(
-						gates,
-						inputs,
-						g.inputs[1],
-						involved_gates,
-						wire_operations,
-						depth + 1,
-						parent_gate,
-					),
-				),
-			)
-		}
-	}
-	return result
+	memo[gate_input]=result
+	
+	return memo[gate_input]
 }
 
 calculate_num :: proc(bit_num: []bool) -> u64 {
@@ -307,7 +214,6 @@ parse_gates_inputs :: proc(input: string, gates, inputs: ^map[string]Gate) {
 	}
 }
 
-
 /* we need to run verification on diferent type of gates, it could be an edge (like the Z's one)
 		or intermediate, like all the others, some of them are going to be the carry of the operations, and the others
 		will represents the A and B in the sum operations.
@@ -317,7 +223,7 @@ parse_gates_inputs :: proc(input: string, gates, inputs: ^map[string]Gate) {
     	Bitwise Sum: Si=Ai⊕Bi⊕Ci−1
 
         	- Where Ci−1 is the carry from the previous bit position.
-        	- For the least significant bit, C−1=0.
+        	- For the least significant bit, C−1=0. (z00)
 
     	Carry Generation: Ci=(Ai∧Bi)∨(Ci−1∧(Ai⊕Bi))
 
@@ -339,6 +245,7 @@ edge :: proc(gates: map[string]Gate, wire: string, depth: int, memo: ^map[[2]str
 		return false
 	}
 
+	// z00
 	if depth == 0 {
 		return gate.inputs == [2]string{"x00", "y00"} || gate.inputs == [2]string{"y00", "x00"}
 	}
@@ -475,6 +382,7 @@ check_progress :: proc(gates: map[string]Gate) -> int {
 find_and_swap_faulty_gates :: proc(gates: ^map[string]Gate, gates_srt: []string) -> string {
 	swaps := [dynamic]string{}
 
+	// look for 4 swaps
 	for _ in 0 ..< 4 {
 		// track how far we made it before/after swaps
 		base_progress := check_progress(gates^)
