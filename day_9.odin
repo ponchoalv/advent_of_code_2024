@@ -87,7 +87,7 @@ checksum :: proc(disk_image: []u32) -> (checksum: u64) {
 
 swap_blanks_for_numbers :: proc(numbers, free_spaces: []u32, disk_image: ^[dynamic]u32) #no_bounds_check {
 	// swap values from number block to blank space block
-	for nb in soa_zip(num = numbers, blank = free_spaces) {
+	#no_bounds_check for nb in soa_zip(num = numbers, blank = free_spaces) {
 		if nb.num < nb.blank {
 			break
 		}
@@ -138,7 +138,7 @@ defrag_block :: proc(input: string) -> u64 #no_bounds_check {
 	track_brank_group_index_position := [dynamic]u32{}
 	current_id: u32
 
-	for c, i in input {
+	#no_bounds_check for c, i in input {
 		if c == 0 || c == '\n' {
 			continue
 		}
@@ -167,13 +167,13 @@ defrag_block :: proc(input: string) -> u64 #no_bounds_check {
 	slice.reverse(track_numbers_group_index_position[:])
 
 	// n will be the last position for that block of numbert
-	numbers_loop: for n in track_numbers_group_index_position {
+	#no_bounds_check numbers_loop: for n in track_numbers_group_index_position {
 		nums_pos := track_numbers[n]
 		nums_block := u32(len(nums_pos))
 
 		// look for free space blocks for block of size nums_block with which ocuppied positions nums_pos to n-1.
 		// b will be the last position of that block of free space. 
-		for b, i in track_brank_group_index_position {
+		#no_bounds_check for b, i in track_brank_group_index_position {
 			blanks_pos := track_blank[b]
 			blanks_block := u32(len(blanks_pos))
 
