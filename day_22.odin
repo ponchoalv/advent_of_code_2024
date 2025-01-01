@@ -63,14 +63,14 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	lines := strings.split_lines(input)
 
 	best := 0
-	for l in lines {
+	#no_bounds_check for l in lines {
 		if l == "" {continue}
 		secret, _ := strconv.parse_u64(l)
 		initial := secret
 		visited := make_map_cap(map[[4]int]bool, 2000)
 		defer delete_map(visited)
 
-		for i in 0 ..< 2000 {
+		#no_bounds_check for i in 0 ..< 2000 {
 			secret = step(secret)
 			if i == 0 {
 				prices := make([dynamic]int)
@@ -82,7 +82,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 			}
 
 			if i > 3 {
-				zipped := soa_zip(
+				#no_bounds_check zipped := soa_zip(
 					a = pre_calculated_prices[initial][:],
 					b = pre_calculated_prices[initial][1:],
 				)
