@@ -54,10 +54,10 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 
-	pre_calculated_prices := make(map[u64][dynamic]int)
+	pre_calculated_prices := make_map_cap(map[u64][dynamic]int, 3000)
 	defer delete_map(pre_calculated_prices)
 
-	price_changes_sequences := make(map[[4]int]int)
+	price_changes_sequences := make_map_cap(map[[4]int]int, 45000)
 	defer delete_map(price_changes_sequences)
 
 	lines := strings.split_lines(input)
@@ -67,13 +67,16 @@ part_2 :: proc(filename: string) -> (result: u64) {
 		if l == "" {continue}
 		secret, _ := strconv.parse_u64(l)
 		initial := secret
-		visited := make(map[[4]int]bool)
+		visited := make_map_cap(map[[4]int]bool, 2000)
 		defer delete_map(visited)
 
 		for i in 0 ..< 2000 {
 			secret = step(secret)
 			if i == 0 {
-				pre_calculated_prices[initial] = [dynamic]int{0, int(secret % 10)}
+				prices := make([dynamic]int)
+				reserve_dynamic_array(&prices, 2001)
+				append(&prices, int(secret % 10))
+				pre_calculated_prices[initial] = prices 
 			} else {
 				append(&pre_calculated_prices[initial], int(secret % 10))
 			}
@@ -98,7 +101,11 @@ part_2 :: proc(filename: string) -> (result: u64) {
 				}
 			}
 		}
+		// fmt.println(len(visited))
 	}
+
+	fmt.println(len(pre_calculated_prices))
+	fmt.println(len(price_changes_sequences))
 
 	result = u64(best)
 
