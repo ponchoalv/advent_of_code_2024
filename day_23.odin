@@ -64,7 +64,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 					slice.sort(val)
 					key := strings.join(val, ",")
 					if !(key in net_3) {
-						net_3[key]=true
+						net_3[key] = true
 					}
 				}
 			}
@@ -115,11 +115,11 @@ part_2 :: proc(filename: string) -> (result: string) {
 	biggest_network := min(int)
 	response := string{}
 	for pc in grouped_computers {
-			network := get_biggest_network_for_computer(grouped_computers, pc)
-			biggest_network = max(biggest_network, len(network))
-			if len(network) == biggest_network {
-				response = network
-			}
+		network := get_biggest_network_for_computer(grouped_computers, pc)
+		biggest_network = max(biggest_network, len(network))
+		if len(network) == biggest_network {
+			response = network
+		}
 	}
 
 	result = response
@@ -130,12 +130,15 @@ part_2 :: proc(filename: string) -> (result: string) {
 	return
 }
 
-get_biggest_network_for_computer :: proc(grouped_computers: map[string]map[string]string, key:string) -> string {	
+get_biggest_network_for_computer :: proc(
+	grouped_computers: map[string]map[string]string,
+	key: string,
+) -> string {
 	result := make([][dynamic]string, len(grouped_computers[key]))
 	defer delete(result)
 	nets := grouped_computers[key]
 	nets_slice, _ := slice.map_keys(nets)
-	
+
 	for &l in result {
 		append(&l, key)
 	}
@@ -143,7 +146,7 @@ get_biggest_network_for_computer :: proc(grouped_computers: map[string]map[strin
 	for pc in nets_slice {
 		matched_count := 0
 		for pc2 in nets_slice {
-			if pc == pc2 { continue }
+			if pc == pc2 {continue}
 			if pc in grouped_computers[pc2] {
 				matched_count += 1
 			}
@@ -165,7 +168,7 @@ get_biggest_network_for_computer :: proc(grouped_computers: map[string]map[strin
 	#reverse for &res, i in result {
 		if len(res) > 1 && len(res) >= len(result) {
 			slice.sort(res[:])
-			network = strings.join(res[:i+2], ",")
+			network = strings.join(res[:i + 2], ",")
 			break
 		}
 	}
@@ -198,7 +201,7 @@ test_part_2 :: proc(input: string, expected_result: string) {
 }
 
 read_file :: proc(filename: string) -> string {
-	data, ok := os.read_entire_file(filename, context.temp_allocator)
+	data, ok := os.read_entire_file(filename)
 	if !ok {
 		panic("failed reading file")
 	}
