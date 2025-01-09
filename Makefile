@@ -8,7 +8,7 @@ ifeq (,$(wildcard ./day_${DAY}_input))
 endif
 
 run_day: download_input ${CURRENT_FILE}
-	odin run ${CURRENT_FILE} -file
+	odin run ${CURRENT_FILE} -file -o:speed
 
 run_day_no_bounds_check: ${CURRENT_FILE}
 	odin run ${CURRENT_FILE} -file --no-bounds-check
