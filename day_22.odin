@@ -76,7 +76,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 				prices := make([dynamic]int)
 				reserve_dynamic_array(&prices, 2001)
 				append(&prices, int(secret % 10))
-				pre_calculated_prices[initial] = prices 
+				pre_calculated_prices[initial] = prices
 			} else {
 				append(&pre_calculated_prices[initial], int(secret % 10))
 			}
@@ -112,7 +112,7 @@ part_2 :: proc(filename: string) -> (result: u64) {
 	elapsed := time.since(start)
 
 	fmt.printf("time elapsed part 2: %fms\n", time.duration_milliseconds(elapsed))
-	
+
 	return
 }
 
