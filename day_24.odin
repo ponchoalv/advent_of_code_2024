@@ -38,11 +38,8 @@ Gate :: struct {
 main :: proc() {
 	fmt.println("Running day_24...")
 	test_part_1("day_24_example_input", EXAMPLE_PART_1)
-	// test_part_2("day_24_example_input", EXAMPLE_PART_2)
 	test_part_1("day_24_input", RESULT_PART_1)
 	test_part_2("day_24_input", RESULT_PART_2)
-	
-	// part_2_my_first_approach("day_24_input")
 }
 
 part_1 :: proc(filename: string) -> (result: u64) {
@@ -147,7 +144,7 @@ calculate_gate_value :: proc(gates, inputs: map[string]Gate, gate_input: string,
 	if gate_input in memo {
 		return memo[gate_input]
 	}
-	
+
 	if gate_input in inputs {
 		return inputs[gate_input].value
 	}
@@ -174,7 +171,7 @@ calculate_gate_value :: proc(gates, inputs: map[string]Gate, gate_input: string,
 	}
 
 	memo[gate_input]=result
-	
+
 	return memo[gate_input]
 }
 
@@ -523,7 +520,7 @@ fix_crossed_wires :: proc(inputs: map[string]Gate, gates: ^map[string]Gate, gate
 					append(&swaps, x, y)
 					break x_loop
 				}
-				
+
 				// restore swaped gates, there was no improvement
 				gates[x], gates[y] = gates[y], gates[x]
 			}
