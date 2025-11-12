@@ -18,7 +18,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 	start := time.now()
 	input := read_file(filename)
 	lines := strings.split_lines(input)
-	
+
 	parsing_lock := false
 
 	locks := [dynamic][5]int{}
@@ -43,13 +43,13 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 			continue
 		}
-		
+
 		if i == 0 && l == "#####" {
 			parsing_lock=true
 		} else if i == 0 {
 			parsing_lock=false
 		}
-		
+
 		temp_key_lock[0] += 1 if (parsing_lock && l[0] == '#') || (!parsing_lock && l[0] == '.') else 0
 		temp_key_lock[1] += 1 if (parsing_lock && l[1] == '#') || (!parsing_lock && l[1] == '.') else 0
 		temp_key_lock[2] += 1 if (parsing_lock && l[2] == '#') || (!parsing_lock && l[2] == '.') else 0

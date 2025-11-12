@@ -24,7 +24,7 @@ NUM_PAD := [][]rune {
 }
 
 DIR_PAD := [][]rune{
-	[]rune{'#', '^', 'A'}, 
+	[]rune{'#', '^', 'A'},
 	[]rune{'<', 'v', '>'},
 }
 
@@ -55,18 +55,18 @@ pre_calculate_length := map[[2]rune]u64{}
 
 main :: proc() {
 	fmt.println("Running day_21...")
-	
+
 	start := time.now()
-	
+
 	// pre-calculate best movements from one digit to another in the pads
 	// this implementation was a simple BFS with a cost tracking map so we only got all the best paths
 	pre_calculate_pad_moves(NUM_PAD, &pre_calculated_moves)
 	pre_calculate_pad_moves(DIR_PAD, &pre_calculated_moves)
 	pre_calculate_pad_moves_length(pre_calculated_moves, &pre_calculate_length)
-	
+
 	elapsed := time.since(start)
-	fmt.printf("time elapsed pre-calculating moves: %fms\n", time.duration_milliseconds(elapsed))	
-	
+	fmt.printf("time elapsed pre-calculating moves: %fms\n", time.duration_milliseconds(elapsed))
+
 	test_part_1("day_21_example_input", EXAMPLE_PART_1)
 	test_part_2("day_21_example_input", EXAMPLE_PART_2)
 	test_part_1("day_21_input", RESULT_PART_1)
@@ -76,7 +76,7 @@ main :: proc() {
 
 /* The problem initially was solved by brute force (part 1)
 	After part 2 some bits from part one stayed others were removed.
-	pre_calculated moves was kept, improved, merged into one dictionary 
+	pre_calculated moves was kept, improved, merged into one dictionary
 	so we could use them in a recursive function later on.
 */
 part_1 :: proc(filename: string) -> (result: u64) {

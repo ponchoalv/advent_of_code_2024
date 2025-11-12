@@ -1,0 +1,10 @@
+{
+    "ols": {
+        "command": "ols",
+        "args": [],
+        "filetypes": ["odin"],
+        "rootPatterns": [".git/"],
+        "initializationOptions": {},
+        "settings": {}
+    }
+}
