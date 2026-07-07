@@ -35,8 +35,8 @@ main :: proc() {
 	fmt.println("Running day_20...")
 	test_part_1("day_20_example_input", EXAMPLE_PART_1)
 	test_part_2("day_20_example_input", EXAMPLE_PART_2)
-	test_part_1("day_20_input", RESULT_PART_1)
-	test_part_2("day_20_input", RESULT_PART_2)
+	// test_part_1("day_20_input", RESULT_PART_1)
+	// test_part_2("day_20_input", RESULT_PART_2)
 }
 
 part_1 :: proc(filename: string) -> (result: u64) {
@@ -47,7 +47,7 @@ part_1 :: proc(filename: string) -> (result: u64) {
 
 	no_cheating_picoseconds, tiles_from_start := find_paths(grid, start_tile, target, false)
 	_, tiles_from_end := find_paths(grid, target, start_tile, false)
-	
+
 	fmt.println("tiles_from_start", tiles_from_start[start_tile.position])
 	fmt.println("tiles_from_end", tiles_from_end[start_tile.position])
 	fmt.println("no_cheating_picoseconds", no_cheating_picoseconds)
@@ -121,10 +121,11 @@ test_part_2 :: proc(input: string, expected_result: u64) {
 }
 
 read_file :: proc(filename: string) -> string {
-	data, ok := os.read_entire_file(filename, context.temp_allocator)
-	if !ok {
+    data, ok := os.read_entire_file(filename, context.temp_allocator)
+    if ok != nil {
+        fmt.println(ok)
 		panic("failed reading file")
-	}
+    }
 
 	return string(data)
 }

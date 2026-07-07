@@ -55,9 +55,9 @@ part_2 :: proc(filename: string) -> (result: u64) {
 
 	cpu := CPU{}
 	output := []u64{9999999}
-	
+
 	i: u64 = 0
-	
+
 	// the program is an output of 16 digits
 	for j in 0..<16 {
 		for !are_equal(output, program[len(program) - (1+j):]) {
