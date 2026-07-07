@@ -121,11 +121,11 @@ test_part_2 :: proc(input: string, expected_result: u64) {
 }
 
 read_file :: proc(filename: string) -> string {
-    data, ok := os.read_entire_file(filename, context.temp_allocator)
-    if ok != nil {
-        fmt.println(ok)
+	data, ok := os.read_entire_file(filename, context.temp_allocator)
+	if ok != nil {
+		fmt.println(ok)
 		panic("failed reading file")
-    }
+	}
 
 	return string(data)
 }
