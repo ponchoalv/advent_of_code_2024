@@ -133,7 +133,7 @@ test_part_2 :: proc(input: string, expected_result: string) {
 
 read_file :: proc(filename: string) -> string {
 	data, ok := os.read_entire_file(filename, context.temp_allocator)
-	if !ok {
+	if ok != nil {
 		panic("failed reading file")
 	}
 
