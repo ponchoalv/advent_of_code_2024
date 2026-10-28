@@ -6,5 +6,9 @@
         "rootPatterns": [".git/"],
         "initializationOptions": {},
         "settings": {}
-    }
+    },
+    "cSpell.words": [
+        "println",
+        "strconv"
+    ]
 }

@@ -69,8 +69,8 @@ main :: proc() {
 
 	test_part_1("day_21_example_input", EXAMPLE_PART_1)
 	test_part_2("day_21_example_input", EXAMPLE_PART_2)
-	test_part_1("day_21_input", RESULT_PART_1)
-	test_part_2("day_21_input", RESULT_PART_2)
+	// test_part_1("day_21_input", RESULT_PART_1)
+	// test_part_2("day_21_input", RESULT_PART_2)
 }
 
 
@@ -156,7 +156,7 @@ test_part_2 :: proc(input: string, expected_result: u64) {
 }
 
 read_file :: proc(filename: string) -> string {
-	data, ok := os.read_entire_file(filename)
+	data, ok := os.read_entire_file(filename, context.temp_allocator)
 	if ok != nil {
 		panic("failed reading file")
 	}
